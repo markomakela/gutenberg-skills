@@ -9,6 +9,39 @@ Two Claude skills for building WordPress sites with native Gutenberg blocks. The
 
 Short version: `native-blocks` decides what to build, `block-authoring` writes markup that actually validates.
 
+## What each skill does
+
+### gutenberg-native-blocks
+
+Field-tested practices for building client websites with native Gutenberg blocks, extracted from real WebAula agency projects. The core lesson: decide at the design stage that the site is built in Gutenberg, and make every design decision map to a core block. Sites fail when the design is drawn first and blocks are forced onto it afterwards.
+
+It covers:
+
+- **Constraint-first design briefs.** Every brief and design prompt states up front that the site is native Gutenberg only, and names the core block each designed section maps to.
+- **Section-to-block mapping vocabulary.** Full-width section = Cover/Group with `alignfull`, card grid = Columns, image beside text = Media & Text, FAQ = Details block, dynamic listings = Query Loop, repeated cards = registered Patterns, header/footer = Template Parts.
+- **theme.json as single source of truth.** Semantic palette names, type scale, spacing presets on a fixed scale, button styles, radius. Content references preset slugs, never raw hex.
+- **What consistently works:** accent color restraint, registering Patterns for anything repeated, the master template method for non-developer editors, global styles in the right layer, mastering the four workhorse blocks (Group, Columns, Cover, Query Loop) first.
+- **What consistently fails:** absolute positioning and overlapping elements, heavy custom CSS layered over blocks, `:has()` selectors for state styling, automatic word-break on Finnish/Swedish compound words (use manual `&shy;` soft hyphens).
+- **The Claude Code build process** for turning an approved design plus design system into theme.json, templates, and patterns.
+
+The skill triggers whenever a conversation mentions Gutenberg, block themes, FSE, theme.json, patterns, converting a design to blocks, or checking a design for "buildability".
+
+### gutenberg-block-authoring
+
+Generates serialized Gutenberg block markup that pastes directly into the block editor without triggering "Attempt Block Recovery" or validation errors. Vendored from [ross-mulcahy/gutenberg-block-authoring-skill](https://github.com/ross-mulcahy/gutenberg-block-authoring-skill) (MIT) and pinned to WordPress 7.0 (Gutenberg `wp/7.0` branch). Every rule in it was tested in a real Gutenberg editor.
+
+It covers:
+
+- **The full serialization grammar:** block delimiters, JSON attribute formatting, HTML structure, and class naming conventions that the editor's validator actually checks.
+- **50+ core blocks** with attribute schemas, defaults, and working examples: static blocks (paragraph, heading, image, gallery, columns, cover, buttons, quote, table...), template/theme blocks (query, post-template, navigation, site-title, search...), comment blocks, and widget blocks (latest-posts, categories, archives...).
+- **Color, typography, and spacing patterns:** preset class order, style property order, font sizes, and alignment, matching what Gutenberg itself serializes.
+- **Ready content patterns:** hero sections, CTAs, FAQs, pricing tables, and galleries.
+- **Template patterns** for posts, archives, search results, headers, and footers, plus Query Loop configurations.
+- **WordPress 7.0 features** like viewport visibility and block-level CSS, and WordPress VIP constraints.
+- **`block-reference.json`:** machine-readable block schemas extracted from the Gutenberg `wp/7.0` source, which the skill consults for exact attribute names and defaults.
+
+The upstream repo also ships validation tooling that is not vendored here (see "Upstream notes" below): `validate-blocks.js` checks generated markup for delimiter mismatches, invalid JSON, nonexistent style attributes, and missing required classes. Worth running before pasting generated markup into a client site.
+
 ## Install for Claude Code
 
 Global (all projects on your machine):
