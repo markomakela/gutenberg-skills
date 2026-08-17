@@ -1,0 +1,7 @@
+# Generated files are compared byte for byte by build-theme-json.mjs --check.
+# Without this, git converts them to CRLF on checkout on Windows and a fresh
+# clone fails --check on a file nobody touched.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.woff2 binary
