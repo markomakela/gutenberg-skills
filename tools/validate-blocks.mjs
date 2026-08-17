@@ -148,17 +148,24 @@ function ruleNoAbsolutePosition(markup) {
   return out;
 }
 
+// Escapes, not literals. A rule that detects a character should not be the
+// reason a repo-wide check for that character fails, and an invisible
+// character in source is unreadable in review either way.
+const EM_DASH = String.fromCodePoint(0x2014);
+const EN_DASH = String.fromCodePoint(0x2013);
+const SOFT_HYPHEN_CHAR = String.fromCodePoint(0x00ad);
+
 function ruleNoDashes(markup) {
   const text = textContent(markup);
   const out = [];
-  if (text.includes("—")) {
+  if (text.includes(EM_DASH)) {
     out.push({
       rule: "no-dashes",
       level: "error",
       message: "copy contains an em dash. House style is commas, periods, or a restructured sentence."
     });
   }
-  if (text.includes("–")) {
+  if (text.includes(EN_DASH)) {
     out.push({
       rule: "no-dashes",
       level: "error",
@@ -168,7 +175,6 @@ function ruleNoDashes(markup) {
   return out;
 }
 
-const SOFT_HYPHEN = "­";
 const PROMINENT_TEXT =
   /<h[1-6][^>]*>([^]*?)<\/h[1-6]>|<a[^>]*class="[^"]*wp-block-button__link[^"]*"[^>]*>([^]*?)<\/a>/g;
 
@@ -179,7 +185,7 @@ function ruleSoftHyphenHint(markup) {
   for (const match of markup.matchAll(PROMINENT_TEXT)) {
     const inner = (match[1] ?? match[2] ?? "").replace(/<[^>]*>/g, " ");
     for (const token of inner.split(/\s+/)) {
-      if (token.includes("&shy;") || token.includes(SOFT_HYPHEN)) continue;
+      if (token.includes("&shy;") || token.includes(SOFT_HYPHEN_CHAR)) continue;
       // Entities are not letters a reader sees, so measure without them.
       const letters = token.replace(/&[a-z]+;/g, "x").replace(/[^A-Za-zÀ-ɏ]/g, "");
       if (letters.length < 15 || reported.has(letters)) continue;

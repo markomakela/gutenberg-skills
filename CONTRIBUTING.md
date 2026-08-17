@@ -1,0 +1,84 @@
+# Contributing
+
+## House rules
+
+These apply to everything in the repo, including its own prose and code
+comments. `tests/skills.test.mjs` enforces the dash rule across every file the
+repo authors.
+
+- No em dashes or en dashes. Use commas, periods, or restructure.
+- 24-hour time. 14:00, not 2 PM.
+- Client copy is never translated. Finnish stays Finnish.
+- Long Finnish and Swedish compounds take a manual `&shy;`, never automatic
+  word break.
+- Generated files are not hand edited. Change the input and regenerate.
+
+## Running things
+
+```sh
+npm install
+npm test
+```
+
+72 tests, no WordPress installation needed. The one check no script covers is
+activating a generated theme in a real WordPress 7.0 install, which stays
+manual and belongs in the pull request description.
+
+## Adding a validator rule
+
+1. Add the id to `RULES` in `tools/validate-blocks.mjs`. The order of that array
+   is the order findings are reported in.
+2. Write the rule function next to the others. Return an array of
+   `{ rule, level, message }`. `level` is `"error"` or `"warn"`. Warn is the
+   right level for anything that guesses.
+3. Register it in the `houseRules` map inside `validateMarkup`.
+4. Add two fixtures: `tests/fixtures/<id>-fail.html` and `<id>-pass.html`. The
+   loop in `tests/validate-blocks.test.mjs` picks them up automatically.
+5. The passing fixture has to clear every other rule too. A rule that only works
+   in isolation is not a rule.
+6. Document it in the README table and in the stage 6 table of
+   `skills/gutenberg-design-migration/SKILL.md`.
+
+Rules that detect a character should reference it by code point rather than
+embedding it. `String.fromCodePoint(0x2014)` reads in review, an invisible
+character does not, and it keeps the rule from tripping the repo-wide check for
+its own target.
+
+## Changing the design system schema
+
+`schemas/design-system.schema.json` is a contract other things read. Bump
+`meta.schemaVersion` on any breaking change, so a stale `design-system.json`
+fails loudly instead of generating a subtly wrong theme.
+
+JSON Schema cannot see cross references. Anything of the form "this slug must
+exist in that list" belongs in `tools/lint-design-system.mjs`.
+
+After changing the schema or either generator, regenerate the example and commit
+the result:
+
+```sh
+node tools/scaffold-theme.mjs --input examples/agency-site/input/design-system.json --out examples/agency-site/expected/theme --force
+```
+
+Then re-apply the authored sections if the scaffold overwrote them. The list of
+files stage 5 owns is in `tests/scaffold-theme.test.mjs`.
+
+## Regenerating dist
+
+```sh
+./make-dist.sh
+```
+
+Needs `zip`. CI fails if `dist/` is out of date with `skills/`.
+
+## Vendored code
+
+Do not patch house rules into `tools/vendor/`. That directory is upstream's
+code, and keeping it pristine is what makes the next update a copy rather than a
+merge. Modifications that are genuinely unavoidable go in `tools/UPSTREAM.md`
+with a `VENDOR PATCH` comment at the site.
+
+## Line endings
+
+`.gitattributes` pins `eol=lf`. The generators compare files byte for byte, and
+without this a fresh clone on Windows fails `--check` on a file nobody touched.

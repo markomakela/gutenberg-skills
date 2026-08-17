@@ -1,54 +1,125 @@
 # WebAula Gutenberg Skills
 
-Two Claude skills for building WordPress sites with native Gutenberg blocks. They are designed to work as a pair:
+Three Claude skills and the tooling that turns an approved design into a working
+WordPress block theme built from native Gutenberg blocks.
+
+The short version: `design-migration` runs the pipeline, `native-blocks` decides
+what to build, `block-authoring` writes markup that actually validates.
+
+## The pipeline
+
+```
+design + design system
+  |
+  1 audit          model      -> buildability-report.md
+  2 extract        model      -> design-system.json
+  3 scaffold       script     -> theme/ + theme.json
+  4 map sections   model      -> section-map.md
+  5 author markup  model      -> templates/, parts/, patterns/
+  6 validate       script     -> pass, or a list of failures
+```
+
+Stages 3 and 6 are scripts because their inputs have a fixed shape. The rest is
+judgement, but every stage lands in a named file, which is what makes the work
+reviewable instead of one opaque prompt.
+
+**Stage 1 is a hard gate.** No markup is authored until every blocker is either
+flattened in the design or accepted with a written cost. It is the cheapest step
+and the easiest to skip, and skipping it moves the discovery of an unbuildable
+design from minute one to halfway through the build.
+
+## Quickstart
+
+```sh
+git clone https://github.com/rejver007/gutenberg-skills.git
+cd gutenberg-skills
+npm install
+npm test
+```
+
+Then run the worked example end to end:
+
+```sh
+node tools/scaffold-theme.mjs --input examples/agency-site/input/design-system.json --out /tmp/agency-theme
+node tools/validate-blocks.mjs --theme examples/agency-site/expected/theme --report examples/agency-site/input/buildability-report.md
+```
+
+`examples/agency-site/` carries the whole path: a Claude Design output, its
+buildability report, the design system, the section map, and the finished theme.
+`examples/legacy-redesign/` carries a design that fails stage 1, and stops there.
+
+## The skills
 
 | Skill | Job | Source |
 |---|---|---|
-| `gutenberg-native-blocks` | Project workflow: design briefs with the Gutenberg constraint, section-to-block mapping, theme.json design systems, patterns strategy, Claude Code build process, WebAula house rules | Internal (WebAula) |
+| `gutenberg-design-migration` | The six stages, the gate, and the commands. Sequences the other two rather than repeating them | Internal (WebAula) |
+| `gutenberg-native-blocks` | Project workflow: design briefs with the Gutenberg constraint, section-to-block mapping, theme.json design systems, patterns strategy, WebAula house rules | Internal (WebAula) |
 | `gutenberg-block-authoring` | Generating valid serialized block markup that never triggers "Attempt Block Recovery". Per-block attribute schemas, class order, style property order, validated against WordPress 7.0 Gutenberg source | [ross-mulcahy/gutenberg-block-authoring-skill](https://github.com/ross-mulcahy/gutenberg-block-authoring-skill), MIT, vendored snapshot |
 
-Short version: `native-blocks` decides what to build, `block-authoring` writes markup that actually validates.
+### gutenberg-design-migration
 
-## What each skill does
+Sequences the pipeline above. Its most useful content is not the list of steps
+but the stage 1 gate and the flattening table: what an overlapping hero card, a
+corner badge, a diagonal mask and a `:has()` selected state each turn into when
+they have to be built from core blocks.
+
+Triggers on converting a design to a theme, migrating a Claude design, building
+a design in WordPress, scaffolding a block theme, and anything involving
+design-system.json or theme.json generation.
 
 ### gutenberg-native-blocks
 
-Field-tested practices for building client websites with native Gutenberg blocks, extracted from real WebAula agency projects. The core lesson: decide at the design stage that the site is built in Gutenberg, and make every design decision map to a core block. Sites fail when the design is drawn first and blocks are forced onto it afterwards.
+Field-tested practices from real WebAula agency projects. The core lesson:
+decide at the design stage that the site is built in Gutenberg, and make every
+design decision map to a core block. Sites fail when the design is drawn first
+and blocks are forced onto it afterwards.
 
-It covers:
-
-- **Constraint-first design briefs.** Every brief and design prompt states up front that the site is native Gutenberg only, and names the core block each designed section maps to.
-- **Section-to-block mapping vocabulary.** Full-width section = Cover/Group with `alignfull`, card grid = Columns, image beside text = Media & Text, FAQ = Details block, dynamic listings = Query Loop, repeated cards = registered Patterns, header/footer = Template Parts.
-- **theme.json as single source of truth.** Semantic palette names, type scale, spacing presets on a fixed scale, button styles, radius. Content references preset slugs, never raw hex.
-- **What consistently works:** accent color restraint, registering Patterns for anything repeated, the master template method for non-developer editors, global styles in the right layer, mastering the four workhorse blocks (Group, Columns, Cover, Query Loop) first.
-- **What consistently fails:** absolute positioning and overlapping elements, heavy custom CSS layered over blocks, `:has()` selectors for state styling, automatic word-break on Finnish/Swedish compound words (use manual `&shy;` soft hyphens).
-- **The Claude Code build process** for turning an approved design plus design system into theme.json, templates, and patterns.
-
-The skill triggers whenever a conversation mentions Gutenberg, block themes, FSE, theme.json, patterns, converting a design to blocks, or checking a design for "buildability".
+It covers constraint-first design briefs, the section-to-block vocabulary,
+theme.json as the single source of truth, what consistently works (accent colour
+restraint, registering Patterns for anything repeated, the master template
+method, mastering Group, Columns, Cover and Query Loop first) and what
+consistently fails (absolute positioning, heavy custom CSS over blocks, `:has()`
+state styling, automatic word-break on Finnish compounds).
 
 ### gutenberg-block-authoring
 
-Generates serialized Gutenberg block markup that pastes directly into the block editor without triggering "Attempt Block Recovery" or validation errors. Vendored from [ross-mulcahy/gutenberg-block-authoring-skill](https://github.com/ross-mulcahy/gutenberg-block-authoring-skill) (MIT) and pinned to WordPress 7.0 (Gutenberg `wp/7.0` branch). Every rule in it was tested in a real Gutenberg editor.
+Serialized markup that pastes into the block editor without triggering
+validation errors. The full serialization grammar, 50+ core blocks with
+attribute schemas and working examples, colour and typography and spacing
+patterns, ready content patterns, template patterns, WordPress 7.0 features, and
+`block-reference.json` with machine-readable schemas extracted from the
+Gutenberg `wp/7.0` source.
 
-It covers:
+## The tools
 
-- **The full serialization grammar:** block delimiters, JSON attribute formatting, HTML structure, and class naming conventions that the editor's validator actually checks.
-- **50+ core blocks** with attribute schemas, defaults, and working examples: static blocks (paragraph, heading, image, gallery, columns, cover, buttons, quote, table...), template/theme blocks (query, post-template, navigation, site-title, search...), comment blocks, and widget blocks (latest-posts, categories, archives...).
-- **Color, typography, and spacing patterns:** preset class order, style property order, font sizes, and alignment, matching what Gutenberg itself serializes.
-- **Ready content patterns:** hero sections, CTAs, FAQs, pricing tables, and galleries.
-- **Template patterns** for posts, archives, search results, headers, and footers, plus Query Loop configurations.
-- **WordPress 7.0 features** like viewport visibility and block-level CSS, and WordPress VIP constraints.
-- **`block-reference.json`:** machine-readable block schemas extracted from the Gutenberg `wp/7.0` source, which the skill consults for exact attribute names and defaults.
+All Node, ESM, no build step. Node 20 or newer.
 
-The upstream repo also ships validation tooling that is not vendored here (see "Upstream notes" below): `validate-blocks.js` checks generated markup for delimiter mismatches, invalid JSON, nonexistent style attributes, and missing required classes. Worth running before pasting generated markup into a client site.
+| Tool | What it does |
+|---|---|
+| `tools/build-theme-json.mjs` | `design-system.json` to `theme.json`, deterministically. `--check` fails when the file on disk is not what the design system generates, which catches hand edits |
+| `tools/scaffold-theme.mjs` | The 15 file theme structure, seeded from the design system, including a `CLAUDE.md` carrying the real preset slugs |
+| `tools/validate-blocks.mjs` | The vendored WordPress parser plus five house rules. `--theme` walks a whole theme, `--json` emits findings a model can act on |
+| `tools/lint-design-system.mjs` | The cross references JSON Schema cannot express, such as a button colour pointing at a palette slug that does not exist |
+| `schemas/design-system.schema.json` | The contract. Rejects raw hex anywhere a preset slug belongs |
+
+### House rules with a machine check
+
+| Rule | Level | Fails on |
+|---|---|---|
+| `no-raw-hex` | error | a hex value in block attributes or an inline style |
+| `preset-slugs-exist` | error | a preset slug theme.json does not define |
+| `no-absolute-position` | error | `position: absolute` or `fixed` |
+| `no-dashes` | error | an em dash or en dash in copy |
+| `soft-hyphen-hint` | warn | a long Finnish or Swedish compound in a heading or button with no `&shy;` |
+
+Each has an id that `--skip-rule` accepts, so a project can disable one without
+forking the tool.
 
 ## Install for Claude Code
 
 Global (all projects on your machine):
 
 ```sh
-git clone https://github.com/rejver007/gutenberg-skills.git
-cd gutenberg-skills
 ./install.sh
 ```
 
@@ -58,36 +129,60 @@ Project-scoped (commit skills into one client repo):
 ./install.sh --project
 ```
 
-You can also skip this repo entirely for a client project and commit the `skills/` folders directly into that project's `.claude/skills/`. Everyone who clones the project gets them automatically.
+Both discover skills from the `skills/` directory, so adding one needs no edit.
+`./install.sh --list` prints what would be installed.
+
+You can also skip this repo entirely for a client project and commit the
+`skills/` folders directly into that project's `.claude/skills/`. Everyone who
+clones the project gets them automatically.
 
 ## Install for claude.ai (chat)
 
 Grab the packaged files from `dist/` and save them in Claude:
 
+- `dist/gutenberg-design-migration.skill`
 - `dist/gutenberg-native-blocks.skill`
 - `dist/gutenberg-block-authoring.skill`
 
-Open the file in a Claude chat and click Save skill, or upload it under Settings > Capabilities > Skills.
+Open the file in a Claude chat and click Save skill, or upload it under
+Settings > Capabilities > Skills.
 
-If WebAula is on a Team or Enterprise plan, the better path is org provisioning: an owner uploads these files once under Organization settings > Skills and everyone gets them automatically, including future updates.
+If WebAula is on a Team or Enterprise plan, the better path is org provisioning:
+an owner uploads these files once under Organization settings > Skills and
+everyone gets them automatically, including future updates.
 
 ## Updating the skills
 
 1. Edit the SKILL.md under `skills/<name>/`.
 2. Regenerate the dist packages: `./make-dist.sh`
-3. Commit and push. Claude Code users get updates on `git pull` (global installs: re-run `./install.sh`). claude.ai users re-save the new `.skill` file, or the org admin re-uploads it.
+3. Commit and push. Claude Code users get updates on `git pull` (global
+   installs: re-run `./install.sh`). claude.ai users re-save the new `.skill`
+   file, or the org admin re-uploads it.
 
-## Upstream notes for gutenberg-block-authoring
+CI fails if `dist/` is out of date with `skills/`.
 
-- Vendored from the upstream repo and pinned to WordPress 7.0 (Gutenberg `wp/7.0` branch). It ships with `block-reference.json`, the block schemas extracted from Gutenberg source.
-- The upstream repo also contains a markup validator worth using before pasting generated markup into a client site: `node validate-blocks.js --file page.html`. Clone the upstream repo for that tooling.
-- If a future WordPress version starts triggering block recovery, check upstream for an updated release before debugging by hand.
-- License: MIT, Copyright (c) 2026 Ross Mulcahy. The license text is included at `skills/gutenberg-block-authoring/LICENSE`. Keep it there when copying the skill anywhere else.
+## Vendored code
 
-## House rules baked into gutenberg-native-blocks
+The repo vendors from the same upstream in two places, pinned independently:
 
-- Design for blocks: every section in a brief names the core block it maps to.
-- theme.json is the single source of truth. Content references preset slugs, not raw hex.
-- Repeated sections become registered Patterns. Custom blocks are a last resort.
-- No em dashes or en dashes in copy. 24-hour time format.
-- Finnish and Swedish compound words get manual `&shy;` soft hyphens, never automatic word-break.
+| Path | Upstream file | Pinned to |
+|---|---|---|
+| `skills/gutenberg-block-authoring/` | `gutenberg-content/` | WordPress 7.0 snapshot |
+| `tools/vendor/validate-blocks.cjs` | `validate-blocks.js` | commit `62c8a6c8` |
+
+Details, the two mechanical modifications to the validator, and how to enable
+its optional per-attribute type checks are in `tools/UPSTREAM.md`.
+
+License for both: MIT, Copyright (c) 2026 Ross Mulcahy. The licence text is
+included at `skills/gutenberg-block-authoring/LICENSE` and
+`tools/vendor/LICENSE`. Keep it there when copying either anywhere else.
+
+If a future WordPress version starts triggering block recovery, check upstream
+for an updated release before debugging by hand.
+
+## What none of this proves
+
+That a generated theme activates. The validator checks serialization, not
+WordPress. Activating the theme in a real WordPress 7.0 install and opening each
+page in the editor is a manual step, and it is the last one before a client sees
+anything.

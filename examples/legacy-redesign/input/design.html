@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<title>Legacy Redesign, design</title>
+<!--
+  A design produced BEFORE the Gutenberg constraint was stated. It is here to
+  be flattened, not built. Every construct marked NOT BUILDABLE below is one
+  that core blocks cannot express, and every one of them was discovered in a
+  real project halfway through the build rather than on day one.
+
+  Its buildability report runs in flattening mode. See ../buildability-report.md.
+-->
+<style>
+  :root { --brand: #b5121b; --ink: #101014; --paper: #ffffff; }
+  body { margin: 0; font-family: system-ui, sans-serif; color: var(--ink); }
+  .hero { position: relative; height: 520px; background: url(hero.jpg) center/cover; }
+
+  /* NOT BUILDABLE: overlapping card pulled up over the hero edge. */
+  .hero__card {
+    position: absolute; left: 8%; bottom: -80px; width: 460px;
+    background: var(--paper); padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,.25);
+  }
+
+  /* NOT BUILDABLE: absolutely positioned badge anchored to the card corner. */
+  .badge {
+    position: absolute; top: -18px; right: -18px;
+    background: var(--brand); color: #fff; border-radius: 50%;
+    width: 84px; height: 84px; display: grid; place-items: center;
+  }
+
+  /* NOT BUILDABLE: diagonal mask between two sections. */
+  .diagonal { background: var(--brand); clip-path: polygon(0 0, 100% 6vw, 100% 100%, 0 100%); padding: 140px 24px 80px; color: #fff; }
+
+  /* NOT BUILDABLE: state styling through :has(). Broke on real client setups. */
+  .plan:has(input:checked) { outline: 3px solid var(--brand); }
+
+  /* FAILS DIFFERENTLY: automatic word break mangles Finnish compounds. */
+  h1, h2, h3 { overflow-wrap: anywhere; word-break: break-word; }
+
+  .plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .plan { border: 1px solid #e5e5e5; padding: 32px; }
+  .brandwash { background: var(--brand); color: #fff; padding: 80px 24px; }
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <div class="hero__card">
+    <span class="badge">Uutta</span>
+    <h1>Työterveyspalvelut yrityksellesi</h1>
+    <p>Kokonaisvaltainen kumppani henkilöstön hyvinvointiin.</p>
+  </div>
+</section>
+
+<section class="diagonal">
+  <h2>Miksi juuri me</h2>
+  <p>Yli 20 vuoden kokemus.</p>
+</section>
+
+<section class="brandwash">
+  <h2>Asiakaskokemuksia</h2>
+  <p>Brändiväri kolmantena peräkkäisenä pintana.</p>
+</section>
+
+<section style="padding:80px 24px">
+  <h2>Paketit</h2>
+  <div class="plans">
+    <label class="plan"><input type="radio" name="plan"> Perus</label>
+    <label class="plan"><input type="radio" name="plan"> Laaja</label>
+    <label class="plan"><input type="radio" name="plan"> Räätälöity</label>
+  </div>
+</section>
+
+</body>
+</html>

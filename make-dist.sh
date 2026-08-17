@@ -6,7 +6,12 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 mkdir -p "$SCRIPT_DIR/dist"
 
 cd "$SCRIPT_DIR/skills"
-for skill in gutenberg-native-blocks gutenberg-block-authoring; do
+
+# Discovered from the directory rather than hardcoded, so adding a skill needs
+# no edit here.
+for dir in */; do
+  skill="${dir%/}"
+  [ -f "$skill/SKILL.md" ] || continue
   rm -f "$SCRIPT_DIR/dist/$skill.skill"
   zip -r -q "$SCRIPT_DIR/dist/$skill.skill" "$skill"
   echo "Packaged: dist/$skill.skill"

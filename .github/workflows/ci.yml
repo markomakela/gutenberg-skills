@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm ci
+      - run: npm test
+
+  pipeline:
+    # The example is the regression surface: regenerate it from its inputs and
+    # prove nothing drifted. A fresh checkout is also the only place the CRLF
+    # trap shows up, which is why this runs separately from the unit tests.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+
+      - name: theme.json matches its design system
+        run: |
+          node tools/build-theme-json.mjs \
+            --input examples/agency-site/input/design-system.json \
+            --out examples/agency-site/expected/theme/theme.json \
+            --check
+
+      - name: the scaffold reproduces the committed theme
+        run: |
+          node tools/scaffold-theme.mjs \
+            --input examples/agency-site/input/design-system.json \
+            --out /tmp/scaffold
+          for f in style.css functions.php theme.json CLAUDE.md parts/header.html templates/index.html; do
+            diff -u "examples/agency-site/expected/theme/$f" "/tmp/scaffold/$f"
+          done
+
+      - name: every page of the example validates
+        run: |
+          node tools/validate-blocks.mjs \
+            --theme examples/agency-site/expected/theme \
+            --report examples/agency-site/input/buildability-report.md
+
+  dist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: package the skills
+        run: ./make-dist.sh
+      - name: every package unzips to a skill with frontmatter
+        run: |
+          for pkg in dist/*.skill; do
+            name="$(basename "$pkg" .skill)"
+            rm -rf /tmp/unpack && mkdir -p /tmp/unpack
+            unzip -q "$pkg" -d /tmp/unpack
+            test -f "/tmp/unpack/$name/SKILL.md" || { echo "missing SKILL.md in $pkg"; exit 1; }
+            head -1 "/tmp/unpack/$name/SKILL.md" | grep -q '^---$' || { echo "no frontmatter in $pkg"; exit 1; }
+            echo "ok: $pkg"
+          done
+      - name: dist is up to date with skills
+        run: git diff --exit-code --stat dist/ || { echo "run ./make-dist.sh and commit dist/"; exit 1; }
