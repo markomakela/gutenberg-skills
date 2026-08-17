@@ -1,0 +1,256 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/rejver007/gutenberg-skills/schemas/design-system.schema.json",
+  "title": "Gutenberg design system",
+  "description": "The contract between a design and a WordPress block theme. Everything downstream of a design reads this file: build-theme-json.mjs generates theme.json from it, scaffold-theme.mjs seeds the theme skeleton and CLAUDE.md from it, and validate-blocks.mjs checks page markup against the slugs it declares. The central rule is that every colour, size and spacing reference outside the definition lists is a preset slug, never a raw value. Raw values fragment the design system and are the reason content ends up carrying hex.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["meta", "palette", "typography", "spacing", "elements", "styles", "layout"],
+
+  "$defs": {
+    "slug": {
+      "description": "A preset slug. The pattern excludes '#', so a raw hex value can never appear where a slug is expected.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "minLength": 2,
+      "maxLength": 40
+    },
+    "spacingSlug": {
+      "description": "A spacing preset slug. WordPress core numbers its spacing presets rather than naming them, so 'var:preset|spacing|50' is the normal form and a purely numeric slug has to be allowed here. The pattern still rejects anything carrying a unit, so '64px' cannot be written where a preset reference belongs.",
+      "type": "string",
+      "pattern": "^([0-9]{1,3}|[a-z][a-z0-9-]*)$",
+      "maxLength": 40
+    },
+    "hex": {
+      "description": "A literal colour. Allowed only inside palette, which is where colours are defined rather than referenced.",
+      "type": "string",
+      "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$"
+    },
+    "cssLength": {
+      "description": "A CSS length. clamp() is allowed so a fluid type scale can be expressed here rather than hand-edited into theme.json later.",
+      "type": "string",
+      "pattern": "^(0|clamp\\(.+\\)|-?[0-9]*\\.?[0-9]+(px|rem|em|%|vw|vh|ch))$"
+    },
+    "boxSides": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["top", "right", "bottom", "left"],
+      "properties": {
+        "top": { "$ref": "#/$defs/cssLength" },
+        "right": { "$ref": "#/$defs/cssLength" },
+        "bottom": { "$ref": "#/$defs/cssLength" },
+        "left": { "$ref": "#/$defs/cssLength" }
+      }
+    }
+  },
+
+  "properties": {
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "name", "textDomain", "wpVersion"],
+      "properties": {
+        "schemaVersion": {
+          "description": "Pinned at 1. Bump only on a breaking change to this schema, so a stale design-system.json fails loudly instead of generating a subtly wrong theme.",
+          "const": 1
+        },
+        "name": { "type": "string", "minLength": 1 },
+        "textDomain": { "$ref": "#/$defs/slug" },
+        "wpVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" },
+        "description": { "type": "string" }
+      }
+    },
+
+    "palette": {
+      "description": "Colour definitions. The six semantic slugs named by gutenberg-native-blocks are the expected set. Extra slugs validate here but are reported as design system drift by validate-blocks.mjs, because every added colour is one more thing an editor can pick wrongly.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["slug", "name", "color"],
+        "properties": {
+          "slug": { "$ref": "#/$defs/slug" },
+          "name": { "type": "string", "minLength": 1 },
+          "color": { "$ref": "#/$defs/hex" }
+        }
+      }
+    },
+
+    "typography": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fontFamilies", "fontSizes"],
+      "properties": {
+        "fontFamilies": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["slug", "name", "fontFamily"],
+            "properties": {
+              "slug": { "$ref": "#/$defs/slug" },
+              "name": { "type": "string", "minLength": 1 },
+              "fontFamily": { "type": "string", "minLength": 1 },
+              "fontFace": {
+                "description": "Present means self-hosted, absent means a system stack. Absent is the better default: a webfont is a performance cost that has to be argued for.",
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["fontFamily", "fontWeight", "fontStyle", "src"],
+                  "properties": {
+                    "fontFamily": { "type": "string" },
+                    "fontWeight": { "type": "string" },
+                    "fontStyle": { "type": "string" },
+                    "fontDisplay": { "type": "string" },
+                    "src": {
+                      "type": "array",
+                      "minItems": 1,
+                      "items": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "fontSizes": {
+          "description": "The type scale. Slugs are fixed to the six the skill names, so a design cannot quietly grow a seventh heading level.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["slug", "name", "size"],
+            "properties": {
+              "slug": {
+                "enum": ["display", "h1", "h2", "h3", "body", "small"]
+              },
+              "name": { "type": "string", "minLength": 1 },
+              "size": { "$ref": "#/$defs/cssLength" },
+              "lineHeight": { "type": "string" },
+              "fluid": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+
+    "spacing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spacingSizes"],
+      "properties": {
+        "spacingSizes": {
+          "description": "A fixed scale. Measured values from a design snap to the nearest step rather than adding a step. If a value genuinely cannot snap, that is a design question, not a new preset.",
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["slug", "name", "size"],
+            "properties": {
+              "slug": { "$ref": "#/$defs/spacingSlug" },
+              "name": { "type": "string", "minLength": 1 },
+              "size": { "$ref": "#/$defs/cssLength" }
+            }
+          }
+        }
+      }
+    },
+
+    "elements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["button"],
+      "properties": {
+        "button": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["background", "text", "radius", "padding", "hover"],
+          "properties": {
+            "background": { "$ref": "#/$defs/slug" },
+            "text": { "$ref": "#/$defs/slug" },
+            "fontSize": { "$ref": "#/$defs/slug" },
+            "radius": { "$ref": "#/$defs/cssLength" },
+            "padding": { "$ref": "#/$defs/boxSides" },
+            "hover": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["background", "text"],
+              "properties": {
+                "background": { "$ref": "#/$defs/slug" },
+                "text": { "$ref": "#/$defs/slug" }
+              }
+            }
+          }
+        },
+        "link": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["text"],
+          "properties": {
+            "text": { "$ref": "#/$defs/slug" },
+            "textDecoration": { "type": "string" },
+            "hover": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["text"],
+              "properties": {
+                "text": { "$ref": "#/$defs/slug" },
+                "textDecoration": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "styles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["card", "sectionRhythm"],
+      "properties": {
+        "card": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["background", "radius", "padding"],
+          "properties": {
+            "background": { "$ref": "#/$defs/slug" },
+            "radius": { "$ref": "#/$defs/cssLength" },
+            "padding": { "$ref": "#/$defs/boxSides" },
+            "shadow": { "type": "string" },
+            "borderColor": { "$ref": "#/$defs/slug" }
+          }
+        },
+        "sectionRhythm": {
+          "description": "Vertical rhythm between sections, as spacing slugs. Naming the three cases here is what stops per-section padding from being invented during the build.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["default", "tight", "loose"],
+          "properties": {
+            "default": { "$ref": "#/$defs/spacingSlug" },
+            "tight": { "$ref": "#/$defs/spacingSlug" },
+            "loose": { "$ref": "#/$defs/spacingSlug" }
+          }
+        }
+      }
+    },
+
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contentSize", "wideSize"],
+      "properties": {
+        "contentSize": { "$ref": "#/$defs/cssLength" },
+        "wideSize": { "$ref": "#/$defs/cssLength" }
+      }
+    }
+  }
+}

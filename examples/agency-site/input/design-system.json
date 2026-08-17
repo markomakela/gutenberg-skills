@@ -1,0 +1,110 @@
+{
+  "meta": {
+    "schemaVersion": 1,
+    "name": "Agency Site",
+    "textDomain": "agency-site",
+    "wpVersion": "7.0",
+    "description": "Worked example. A Finnish service company site: hero, services, about, CTA, FAQ, blog listing."
+  },
+
+  "palette": [
+    { "slug": "primary", "name": "Primary", "color": "#1f5f4b" },
+    { "slug": "dark", "name": "Dark", "color": "#12261f" },
+    { "slug": "surface", "name": "Surface", "color": "#ffffff" },
+    { "slug": "neutral", "name": "Neutral", "color": "#f4f4f1" },
+    { "slug": "text", "name": "Text", "color": "#1b1b1b" },
+    { "slug": "muted", "name": "Muted", "color": "#5c625f" }
+  ],
+
+  "typography": {
+    "fontFamilies": [
+      {
+        "slug": "body",
+        "name": "Body",
+        "fontFamily": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+      },
+      {
+        "slug": "heading",
+        "name": "Heading",
+        "fontFamily": "Georgia, 'Times New Roman', serif"
+      }
+    ],
+    "fontSizes": [
+      { "slug": "small", "name": "Small", "size": "0.875rem", "lineHeight": "1.5" },
+      { "slug": "body", "name": "Body", "size": "1rem", "lineHeight": "1.6" },
+      { "slug": "h3", "name": "Heading 3", "size": "1.375rem", "lineHeight": "1.3" },
+      { "slug": "h2", "name": "Heading 2", "size": "1.875rem", "lineHeight": "1.25" },
+      { "slug": "h1", "name": "Heading 1", "size": "2.5rem", "lineHeight": "1.15" },
+      {
+        "slug": "display",
+        "name": "Display",
+        "size": "clamp(2.5rem, 1.8rem + 3vw, 4rem)",
+        "lineHeight": "1.1",
+        "fluid": true
+      }
+    ]
+  },
+
+  "spacing": {
+    "spacingSizes": [
+      { "slug": "10", "name": "1 / 8px", "size": "8px" },
+      { "slug": "20", "name": "2 / 16px", "size": "16px" },
+      { "slug": "30", "name": "3 / 24px", "size": "24px" },
+      { "slug": "40", "name": "4 / 40px", "size": "40px" },
+      { "slug": "50", "name": "5 / 64px", "size": "64px" },
+      { "slug": "60", "name": "6 / 96px", "size": "96px" }
+    ]
+  },
+
+  "elements": {
+    "button": {
+      "background": "primary",
+      "text": "surface",
+      "fontSize": "body",
+      "radius": "4px",
+      "padding": {
+        "top": "14px",
+        "right": "28px",
+        "bottom": "14px",
+        "left": "28px"
+      },
+      "hover": {
+        "background": "dark",
+        "text": "surface"
+      }
+    },
+    "link": {
+      "text": "primary",
+      "textDecoration": "underline",
+      "hover": {
+        "text": "dark",
+        "textDecoration": "underline"
+      }
+    }
+  },
+
+  "styles": {
+    "card": {
+      "background": "surface",
+      "radius": "8px",
+      "padding": {
+        "top": "30px",
+        "right": "30px",
+        "bottom": "30px",
+        "left": "30px"
+      },
+      "shadow": "0 1px 2px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.04)",
+      "borderColor": "neutral"
+    },
+    "sectionRhythm": {
+      "default": "50",
+      "tight": "40",
+      "loose": "60"
+    }
+  },
+
+  "layout": {
+    "contentSize": "720px",
+    "wideSize": "1200px"
+  }
+}

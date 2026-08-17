@@ -1,0 +1,16 @@
+{
+  "name": "gutenberg-skills",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Claude skills and tooling for building WordPress sites with native Gutenberg blocks",
+  "scripts": {
+    "test": "node --test tests/"
+  },
+  "devDependencies": {
+    "ajv": "^8.17.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
