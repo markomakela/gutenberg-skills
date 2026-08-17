@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<title>Agency Site, design</title>
+<!--
+  Claude Design output for a Finnish service company.
+
+  The brief carried the constraint this repo insists on:
+
+    "Lopullinen sivusto on WordPress natiiveilla Gutenberg-lohkoilla, ei
+     sivunrakentajaa. Jokaisen osion on vastattava ydinlohkoa."
+
+  Every section below names the core block it maps to, which is what makes
+  stage 1 of the pipeline a check rather than a rescue. Copy stays in Finnish.
+-->
+<style>
+  :root {
+    --primary: #1f5f4b;
+    --dark: #12261f;
+    --surface: #ffffff;
+    --neutral: #f4f4f1;
+    --text: #1b1b1b;
+    --muted: #5c625f;
+    --content: 720px;
+    --wide: 1200px;
+    --radius: 8px;
+  }
+  body { margin: 0; font-family: system-ui, sans-serif; color: var(--text); background: var(--surface); }
+  .section { padding: 64px 24px; }
+  .wrap { max-width: var(--wide); margin: 0 auto; }
+  .hero { background: var(--dark); color: var(--surface); text-align: left; }
+  .hero h1 { font-size: clamp(2.5rem, 1.8rem + 3vw, 4rem); line-height: 1.1; margin: 0 0 16px; }
+  .button { display: inline-block; background: var(--primary); color: var(--surface); padding: 14px 28px; border-radius: 4px; text-decoration: none; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .card { background: var(--surface); border-radius: var(--radius); padding: 30px; }
+  .services { background: var(--neutral); }
+  .about { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+  .cta { background: var(--primary); color: var(--surface); text-align: center; }
+  .faq details { border-bottom: 1px solid var(--neutral); padding: 16px 0; }
+  footer { background: var(--dark); color: var(--surface); text-align: center; padding: 40px 24px; }
+</style>
+</head>
+<body>
+
+<!-- SECTION: header. Maps to a Template Part (header), site title plus Navigation block. -->
+<header class="section wrap" style="display:flex;justify-content:space-between;align-items:center">
+  <strong>Agency Site</strong>
+  <nav><a href="#palvelut">Palvelut</a> <a href="#meista">Meista</a> <a href="#usein">FAQ</a></nav>
+</header>
+
+<!-- SECTION: hero. Maps to Cover, alignfull, solid dark overlay. No image, no overlap. -->
+<section class="section hero">
+  <div class="wrap">
+    <h1>Rakennamme verkkopalvelut jotka kestavat</h1>
+    <p>Suunnittelusta yllapitoon. Yksi kumppani, ei kolmea.</p>
+    <a class="button" href="#yhteys">Pyyda tarjous</a>
+  </div>
+</section>
+
+<!-- SECTION: services. Maps to Group (alignfull, neutral) containing Columns with three cards.
+     Each card is a Group. The card repeats, so it becomes a registered Pattern. -->
+<section class="section services" id="palvelut">
+  <div class="wrap">
+    <h2>Palvelut</h2>
+    <div class="grid">
+      <div class="card"><h3>Verkkosivustot</h3><p>Nakyva sivusto, jota paivitat itse ilman kehittajaa.</p></div>
+      <div class="card"><h3>Verkkokaupat</h3><p>WooCommerce, joka kestaa kampanjapaivan kuormituksen.</p></div>
+      <div class="card"><h3>Yllapito</h3><p>Paivitykset, varmuuskopiot ja valvonta sovitulla vasteajalla.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION: about. Maps to Media & Text, media on the right, stacks on mobile. -->
+<section class="section" id="meista">
+  <div class="wrap about">
+    <div>
+      <h2>Kuka meita johtaa</h2>
+      <p>Kuuden hengen tiimi Tampereelta. Teemme itse sen mita myymme, emme valita tyota eteenpain.</p>
+    </div>
+    <img src="assets/tiimi.jpg" alt="Tiimi tyopoydan aaressa" style="width:100%;border-radius:var(--radius)">
+  </div>
+</section>
+
+<!-- SECTION: cta. Maps to Group (alignfull, primary) with centered heading and Buttons.
+     This is the single band where the brand colour is used as a surface. -->
+<section class="section cta" id="yhteys">
+  <div class="wrap">
+    <h2>Aloitetaan pienesta</h2>
+    <p>Kartoitus maksaa nolla euroa ja kestaa puoli tuntia.</p>
+    <a class="button" style="background:var(--surface);color:var(--primary)" href="#">Varaa aika</a>
+  </div>
+</section>
+
+<!-- SECTION: faq. Maps to Details blocks, one per question. -->
+<section class="section faq" id="usein">
+  <div class="wrap">
+    <h2>Usein kysyttya</h2>
+    <details><summary>Mita projekti maksaa?</summary><p>Sivusto alkaa noin 6000 eurosta. Tarkka hinta syntyy kartoituksessa.</p></details>
+    <details><summary>Kauanko se kestaa?</summary><p>Kuudesta kymmeneen viikkoa sisallon valmiudesta riippuen.</p></details>
+    <details><summary>Voinko paivittaa sivuja itse?</summary><p>Kylla. Sivut rakennetaan ydinlohkoista, joten muokkaus onnistuu editorissa ilman meita.</p></details>
+  </div>
+</section>
+
+<!-- SECTION: blog teaser. Maps to Query Loop, three posts, grid layout. -->
+<section class="section">
+  <div class="wrap">
+    <h2>Viimeisimmat kirjoitukset</h2>
+    <div class="grid">
+      <article><h3>Otsikko yksi</h3><p>Nosto.</p></article>
+      <article><h3>Otsikko kaksi</h3><p>Nosto.</p></article>
+      <article><h3>Otsikko kolme</h3><p>Nosto.</p></article>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION: footer. Maps to a Template Part (footer). -->
+<footer>Agency Site</footer>
+
+</body>
+</html>

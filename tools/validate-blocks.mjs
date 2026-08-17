@@ -258,7 +258,7 @@ function markupFiles(themeDir) {
  * @param {string} themeDir a scaffolded theme directory
  * @param {string[]} [skip]
  */
-export function validateTheme(themeDir, skip = []) {
+export function validateTheme(themeDir, skip = [], reportPath = null) {
   const themeJsonPath = join(themeDir, "theme.json");
   const themeJson = existsSync(themeJsonPath)
     ? JSON.parse(readFileSync(themeJsonPath, "utf8"))
@@ -278,13 +278,13 @@ export function validateTheme(themeDir, skip = []) {
 
   // The stage 1 gate is the cheapest step in the pipeline and the easiest to
   // skip under deadline pressure, so its absence is worth saying out loud.
-  if (!existsSync(join(themeDir, "buildability-report.md"))) {
+  const report = reportPath ?? join(themeDir, "buildability-report.md");
+  if (!existsSync(report)) {
     warnings.push({
       rule: "buildability-report",
       level: "warn",
       file: themeDir,
-      message:
-        "no buildability-report.md next to the theme. Stage 1 of the migration pipeline may have been skipped."
+      message: `no buildability report at ${report}. Stage 1 of the migration pipeline may have been skipped. Point --report at it if it lives elsewhere.`
     });
   }
 
@@ -307,11 +307,12 @@ function parseArgs(argv) {
     else if (argv[i] === "--theme") args.theme = argv[++i];
     else if (argv[i] === "--json") args.json = true;
     else if (argv[i] === "--skip-rule") args.skip.push(argv[++i]);
+    else if (argv[i] === "--report") args.report = argv[++i];
     else throw new Error(`unknown argument: ${argv[i]}`);
   }
   if (!args.file && !args.theme) {
     throw new Error(
-      "usage: validate-blocks.mjs (--file <file> | --theme <dir>) [--json] [--skip-rule <id>]"
+      "usage: validate-blocks.mjs (--file <file> | --theme <dir>) [--report <file>] [--json] [--skip-rule <id>]"
     );
   }
   for (const rule of args.skip) {
@@ -342,7 +343,7 @@ function main(argv) {
   const args = parseArgs(argv);
 
   if (args.theme) {
-    return report(validateTheme(args.theme, args.skip), args.json);
+    return report(validateTheme(args.theme, args.skip, args.report ?? null), args.json);
   }
 
   const raw = readFileSync(args.file, "utf8");

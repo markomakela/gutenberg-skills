@@ -91,6 +91,20 @@ test("a theme without a buildability report warns that stage 1 may be skipped", 
   assert.equal(rulesIn(warnings).includes("buildability-report"), true);
 });
 
+test("--report points the gate check at a report that lives elsewhere", () => {
+  const report = fileURLToPath(
+    new URL("../examples/agency-site/input/buildability-report.md", import.meta.url)
+  );
+  const { warnings } = validateTheme(themeDir, [], report);
+  assert.equal(rulesIn(warnings).includes("buildability-report"), false);
+});
+
+test("the authored patterns validate, not just the scaffold", () => {
+  const { errors, fileCount } = validateTheme(themeDir);
+  assert.deepEqual(errors, [], JSON.stringify(errors, null, 2));
+  assert.equal(fileCount >= 11, true, `only ${fileCount} markup files found`);
+});
+
 test("--theme exits 0 on the example and prints a summary", () => {
   const result = runCli(["--theme", themeDir]);
   assert.equal(result.status, 0, result.stdout + result.stderr);

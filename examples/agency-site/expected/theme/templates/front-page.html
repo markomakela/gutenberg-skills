@@ -2,10 +2,35 @@
 
 <!-- wp:group {"tagName":"main","layout":{"type":"constrained"}} -->
 <main class="wp-block-group">
+<!-- wp:pattern {"slug":"agency-site/hero"} /-->
+
+<!-- wp:pattern {"slug":"agency-site/services-grid"} /-->
+
+<!-- wp:pattern {"slug":"agency-site/about-media-text"} /-->
+
+<!-- wp:pattern {"slug":"agency-site/cta-band"} /-->
+
+<!-- wp:pattern {"slug":"agency-site/faq"} /-->
+
+<!-- wp:heading {"level":2,"fontSize":"h2"} -->
+<h2 class="wp-block-heading has-h2-font-size">Viimeisimmat kirjoitukset</h2>
+<!-- /wp:heading -->
+
+<!-- wp:query {"queryId":2,"query":{"perPage":3,"pages":0,"offset":0,"postType":"post","order":"desc","orderBy":"date","author":"","search":"","exclude":[],"sticky":"","inherit":false}} -->
+<div class="wp-block-query">
+<!-- wp:post-template {"layout":{"type":"grid","columnCount":3}} -->
+<!-- wp:post-title {"isLink":true,"level":3,"fontSize":"h3"} /-->
+
+<!-- wp:post-excerpt /-->
+<!-- /wp:post-template -->
+
+<!-- wp:query-no-results -->
 <!-- wp:paragraph -->
-<p>Front page sections are authored as patterns and placed here. Keep every
-section a core block, and register anything that repeats.</p>
+<p>Ei viela kirjoituksia.</p>
 <!-- /wp:paragraph -->
+<!-- /wp:query-no-results -->
+</div>
+<!-- /wp:query -->
 </main>
 <!-- /wp:group -->
 

@@ -52,13 +52,38 @@ test("the file list matches the structure the skill prescribes", () => {
   ]);
 });
 
-test("the committed example theme is exactly what the scaffold produces", () => {
+// Stage 5 authors the designed sections into the example theme, so the example
+// is a superset of the scaffold. These are the files authoring owns. Everything
+// else must still be byte for byte what the scaffold writes, which is what
+// stops a hand edit from drifting into the generated half.
+const AUTHORED = [
+  "patterns/about-media-text.php",
+  "patterns/cta-band.php",
+  "patterns/faq.php",
+  "patterns/hero.php",
+  "patterns/services-grid.php",
+  "templates/front-page.html"
+];
+
+test("the committed example theme is the scaffold plus the authored sections", () => {
   const files = scaffoldFiles(example);
-  assert.deepEqual(walk(expectedThemeDir), [...files.keys()].sort());
+  const expectedFiles = [...new Set([...files.keys(), ...AUTHORED])].sort();
+  assert.deepEqual(walk(expectedThemeDir), expectedFiles);
 
   for (const [name, contents] of files) {
+    if (AUTHORED.includes(name)) continue;
     const onDisk = readFileSync(join(expectedThemeDir, name), "utf8").replace(/\r\n/g, "\n");
     assert.equal(contents, onDisk, `${name} differs`);
+  }
+});
+
+test("every authored file is a pattern or the front page, nothing else", () => {
+  for (const name of AUTHORED) {
+    assert.equal(
+      name.startsWith("patterns/") || name === "templates/front-page.html",
+      true,
+      `${name} is outside what stage 5 owns`
+    );
   }
 });
 
