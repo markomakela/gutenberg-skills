@@ -1,7 +1,11 @@
 # Spec: design-to-theme migration pipeline
 
 Date: 2026-08-17
-Status: accepted. Slice 1 (section 8.1) is in scope, the rest waits.
+Status: implemented in full on 2026-08-18, branch `feat/design-system-schema`.
+The phasing in section 8.1 was overridden by the owner, who took all ten items
+in one pass rather than stopping after slice 1. The risk section 9 records still
+stands: the schema is expected to need one breaking revision after the first
+real client project, and the later items now sit on top of it.
 
 ## 1. Current state
 
@@ -204,7 +208,7 @@ One check stays manual and must be stated as such in the README: activating the 
 ## 7. Acceptance criteria
 
 - [ ] `schemas/design-system.schema.json` exists and rejects raw hex in any colour reference outside `palette`
-- [ ] `node tools/scaffold-theme.mjs --input examples/agency-site/input/design-system.json --out /tmp/t` produces a directory identical to `examples/agency-site/expected/theme/`
+- [ ] `node tools/scaffold-theme.mjs --input examples/agency-site/input/design-system.json --out /tmp/t` reproduces every file of `examples/agency-site/expected/theme/` that stage 5 does not author. **Reworded during implementation.** As first written this criterion was unsatisfiable: item 7 authors the designed sections into the same directory, so the example is the scaffold plus a named list of authored files. That list lives in `tests/scaffold-theme.test.mjs`, and everything outside it must still match byte for byte, which is what keeps a hand edit from drifting into the generated half
 - [ ] `node tools/validate-blocks.mjs --theme examples/agency-site/expected/theme/` exits 0
 - [ ] Each of the five WebAula validator rules has a failing fixture and a passing fixture, and both assert
 - [ ] `skills/gutenberg-design-migration/SKILL.md` exists, documents all six stages, and states the stage 1 hard gate in those words
@@ -241,6 +245,23 @@ Do not commit to all ten items at once. The schema will change after the first r
 **If only one evening is available, do item 4 first.** Vendoring the validator is the only item that removes a live client risk rather than saving time. Today the sole defence against "Attempt Block Recovery" reaching a client page is cloning a second repo by hand, which in practice does not happen.
 
 **Cut from the first pass, not merely deferred.** The `soft-hyphen-hint` rule in section 6.3 guesses (14 characters is arbitrary) and will produce false positives. Build it only after the other four rules are running and the noise level is known.
+
+### 8.2 What was actually built
+
+All ten items, on 2026-08-18. The phasing above was overridden. Two deviations
+worth carrying forward:
+
+1. `patterns/` gets a `README.md` documenting the pattern file header rather
+   than a `.gitkeep` carrying a comment. A file whose whole purpose is to be
+   empty is a poor place for the one thing somebody needs to read before adding
+   a pattern.
+2. `soft-hyphen-hint` shipped with the rest rather than being cut, at the
+   owner's direction. Its 15 character threshold is still a guess. Watch the
+   false positive rate on the first real project and lower or raise it there.
+
+The validator also gained `--report`, which was not in the spec. The stage 1
+gate check looked for `buildability-report.md` inside the theme directory, but
+the report is a pipeline artifact and belongs with the other inputs.
 
 ## 9. Risks
 
