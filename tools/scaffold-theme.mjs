@@ -208,7 +208,7 @@ function headerPart() {
 function footerPart(meta) {
   return `<!-- wp:group {"tagName":"footer","backgroundColor":"dark","textColor":"surface","layout":{"type":"constrained"}} -->
 <footer class="wp-block-group has-surface-color has-dark-background-color has-text-color has-background">
-<!-- wp:paragraph {"align":"center","fontSize":"small"} -->
+<!-- wp:paragraph {"style":{"typography":{"textAlign":"center"}},"fontSize":"small"} -->
 <p class="has-text-align-center has-small-font-size">${meta.name}</p>
 <!-- /wp:paragraph -->
 </footer>
