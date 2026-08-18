@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Claude skills and tooling for building WordPress sites with native Gutenberg blocks",
   "scripts": {
-    "test": "node --test tests/"
+    "test": "node --test"
   },
   "devDependencies": {
     "ajv": "^8.17.1"

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
+import { execFileSync } from "node:child_process";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const skillsDir = join(root, "skills");
@@ -87,4 +88,18 @@ test("no em or en dashes in anything this repo authors", () => {
 
   walk(root);
   assert.deepEqual(offenders, []);
+});
+
+// The exec bit is invisible on Windows and fatal on Linux: CI ran ./make-dist.sh
+// and got "Permission denied". git tracks the mode, so assert on the mode.
+test("the shell scripts are executable in git", () => {
+  const listed = execFileSync("git", ["ls-files", "-s", "install.sh", "make-dist.sh"], {
+    cwd: root,
+    encoding: "utf8"
+  });
+
+  for (const line of listed.trim().split("\n")) {
+    const [mode, , , name] = line.split(/\s+/);
+    assert.equal(mode, "100755", `${name} is mode ${mode}, run: git update-index --chmod=+x ${name}`);
+  }
 });
