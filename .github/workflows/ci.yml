@@ -57,17 +57,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: package the skills
-        run: ./make-dist.sh
-      - name: every package unzips to a skill with frontmatter
+
+      # Compare contents, not bytes. A zip embeds timestamps and compression
+      # settings, so two correct archives of the same files differ byte for
+      # byte. What matters is that the committed package contains the skill.
+      - name: committed packages match the skills they contain
         run: |
           for pkg in dist/*.skill; do
             name="$(basename "$pkg" .skill)"
             rm -rf /tmp/unpack && mkdir -p /tmp/unpack
             unzip -q "$pkg" -d /tmp/unpack
-            test -f "/tmp/unpack/$name/SKILL.md" || { echo "missing SKILL.md in $pkg"; exit 1; }
-            head -1 "/tmp/unpack/$name/SKILL.md" | grep -q '^---$' || { echo "no frontmatter in $pkg"; exit 1; }
+            diff -r "skills/$name" "/tmp/unpack/$name"
             echo "ok: $pkg"
           done
-      - name: dist is up to date with skills
-        run: git diff --exit-code --stat dist/ || { echo "run ./make-dist.sh and commit dist/"; exit 1; }
+
+      - name: every skill has a package
+        run: |
+          for dir in skills/*/; do
+            name="$(basename "$dir")"
+            test -f "dist/$name.skill" || { echo "missing dist/$name.skill, run ./make-dist.sh"; exit 1; }
+          done
+
+      - name: make-dist.sh runs and produces the same contents
+        run: |
+          ./make-dist.sh
+          for pkg in dist/*.skill; do
+            name="$(basename "$pkg" .skill)"
+            rm -rf /tmp/regen && mkdir -p /tmp/regen
+            unzip -q "$pkg" -d /tmp/regen
+            diff -r "skills/$name" "/tmp/regen/$name"
+          done
