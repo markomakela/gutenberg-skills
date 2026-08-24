@@ -130,16 +130,20 @@ This is first because it is the difference between one round and five.
 
 ## 4. Importing a real catalogue
 
-- **NO EMAILS may leave during any import, migration or prod→dev refresh.**
-  Real customer addresses are in the data; one stray confirmation or welcome
-  mail reaches a real customer from the wrong environment. Two layers, both,
-  before EVERY run: `woocommerce_email_enabled` → false (999) for Woo's own
-  mails, and a `pre_wp_mail` filter (priority 0) that returns false and LOGS
-  every attempt — after the run, verify from the log that nothing even tried
-  to send. `wp_insert_user` sends no welcome mail by itself; review imports
-  additionally need `notify_moderator`/`notify_post_author` muted, and order
-  imports `woocommerce_can_reduce_order_stock` → false. The block lives only
-  in the import process — later status edits in wp-admin mail normally.
+- **NO EMAILS may leave during any import, migration or prod→dev refresh —
+  and the ONLY reliable block is `pre_wp_mail`.** Woo's enable filter is
+  per-email (`woocommerce_email_enabled_{id}`); a filter added on the bare
+  name `woocommerce_email_enabled` does NOTHING and fails silently. That
+  silent failure sent ~550 "your order is complete" mails to real customers
+  from a staging import before the real block was added. Before EVERY run:
+  a `pre_wp_mail` filter (priority 0) that returns false and LOGS every
+  attempt — and verify the log after the run. Never assume staging cannot
+  deliver mail: shared hosts proxy sendmail to a relay, and the domain's
+  SPF often authorizes it. `wp_insert_user` sends no welcome mail by
+  itself; review imports additionally need `notify_moderator`/
+  `notify_post_author` muted, and order imports
+  `woocommerce_can_reduce_order_stock` → false. The block lives only in
+  the import process — later status edits in wp-admin mail normally.
 
 - **Run the importer under WP-CLI, never the browser.** Same class, no AJAX
   timeouts. `require_once` the importer files; Woo's autoloader does not find
