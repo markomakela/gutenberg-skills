@@ -34,6 +34,14 @@ judgement, but each one still lands in a file.
 
 Do not author serialized markup from this skill alone.
 
+**If the target is a WooCommerce shop rather than a brochure site, read
+`references/woocommerce-launch.md` before stage 3.** The six stages end when the
+theme validates and activates; that file is what a real catalogue needs after
+that — block behaviour that is invisible in the markup, the caching layers that
+make correct code look broken, importing a real product feed, taking over a live
+domain, and the verification discipline that keeps one round from becoming five.
+Half of it changes decisions made in the scaffold.
+
 ## Stage 1: buildability audit
 
 Walk the design against the anti-pattern list in `gutenberg-native-blocks`:
@@ -214,6 +222,13 @@ The list from `gutenberg-native-blocks`, plus the two lines this pipeline adds:
 That last line is not optional and no script covers it. The validator checks
 serialization, not WordPress. Markup that validates can still belong to a theme
 that does not activate.
+
+## Stage 7: shop, data and going live
+
+Only when the target is a WooCommerce shop. See
+`references/woocommerce-launch.md` — WooCommerce block behaviour, caching,
+catalogue import, slug parity when replacing a live site, the design faults that
+only appear in production, and a launch checklist.
 
 ## What this pipeline does not do
 
