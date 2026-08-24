@@ -36,6 +36,13 @@ This is first because it is the difference between one round and five.
   temporary mu-plugin that timestamps `plugins_loaded`, `init`, `wp`,
   `template_redirect`, `wp_footer`, `shutdown` — the theme's own code was 80 ms
   of a 2.2 s page.
+- **SVG elements have no `offsetHeight`.** A visibility probe reported both
+  icon states hidden because SVGElement lacks the HTML offset properties.
+  Measure `getBoundingClientRect().height` or computed `display`.
+- **Check web-request PHP separately from CLI.** `php -v` and `wp eval` report
+  the CLI binary, which can differ in version and `memory_limit` from what the
+  web server runs. Verify with a temporary mu-plugin that logs `PHP_VERSION`
+  and ini values during a real request.
 - **Write a smoke test early and run it after every deploy.** ~30 assertions
   covering the paths that have broken silently. Exit non-zero. Deliberately
   break one check to prove it fails.
@@ -74,6 +81,26 @@ This is first because it is the difference between one round and five.
   your own.
 - **Woo's REST image whitelist is narrower than WordPress's** — AVIF is
   rejected with a permissions-sounding error.
+- **When removing a Woo feature does not stay removed, mute its template
+  instead of chasing hooks.** The PhotoSwipe markup came back through at least
+  two re-adds of theme support, and the gallery block hooks an *anonymous
+  closure* into `wp_footer` that `remove_action` cannot reach. A
+  `wc_get_template` filter returning an empty file kills it at the source, no
+  matter how many code paths request it.
+- **`filterable: true` does not make a non-inherit collection honour filter
+  params.** On the archive the filters hit the MAIN query through Woo's
+  runtime clause filters; a collection running its own query never sees them
+  — the URL changes and the grid does not. Read the params
+  (`categories`, `min_price`/`max_price`, `filter_stock_status`) into the
+  query yourself.
+- **The editor renumbers `queryId` on save.** Reserved ids (91/92) silently
+  became 0 after one editor save and every rule keyed on them stopped firing —
+  with no error, because an unrestricted grid still looks like a grid. Never
+  identify anything by an attribute the editor rewrites (`queryId`, data
+  attributes, hand-added classes on saved templates). Identify by the *page*,
+  a registered block name, or a `className` the block ships with — and put the
+  identification in ONE function, then grep the old way out of every call
+  site in the same change.
 
 ## 3. Caching: the layer that makes correct code look broken
 
@@ -120,6 +147,15 @@ This is first because it is the difference between one round and five.
   a killed process costs one batch.
 - Product bundles and other add-on types are rejected wholesale if the plugin is
   absent; convert the type in the source data.
+- **Post-body images do not travel with the media library.** Importing posts
+  brings their `<img>` markup but not the files behind it — measured 890 of
+  1 183 referenced upload files missing while every product image was fine.
+  When the new site takes over the old address, fetch the missing files from
+  the live site into the *same* uploads paths instead of rewriting content.
+  Two server traps in that run: `/tmp` may be mounted noexec (run
+  `bash script.sh`, not `./script.sh`), and an old `file` magic database does
+  not recognise AVIF — verify by bytes (`ftypavif` at offset 4), not by
+  reported content type.
 
 ## 5. Replacing a live site at the same address
 
@@ -174,6 +210,12 @@ maintain.
 ## 7. Launch checklist beyond the theme
 
 - [ ] Old→new URL parity measured on a sample of the old sitemap
+- [ ] Direct HTTP access to theme `.php` denied (an ABSPATH guard returns an
+      empty 200 — enough to map the theme's structure; a block theme never
+      needs its PHP served, so a one-line `.htaccess` closes it)
+- [ ] Server and local theme trees diffed (`find | sort` both sides) — a
+      multi-file `scp a b host:dir/` lands every file in one directory, and
+      the stray copies are what the next reader edits
 - [ ] SEO plugin active, sitemap responding
 - [ ] Analytics/tag manager container carried over, gated to the production host
       so staging never pollutes production data
