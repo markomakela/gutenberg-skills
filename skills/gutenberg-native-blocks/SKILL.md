@@ -35,7 +35,7 @@ Use this vocabulary consistently in briefs, prompts, and builds:
 
 1. **The constraint-first design brief.** When writing a Claude Design prompt for a site that will be built in Gutenberg, include a dedicated section titled "Critical constraint: this gets built in Gutenberg (native blocks)" listing the block mapping above and the anti-pattern list below. Name the core block each designed section maps to. This keeps the output buildable instead of producing a pretty mockup that cannot be reproduced.
 
-2. **theme.json as the single source of truth.** Palette (with semantic names: primary, dark, surface, neutral, text, muted), type scale (display, h1, h2, h3, body, small), spacing presets on a fixed scale (for example 8 / 16 / 24 / 40 / 64 / 96), button styles, and border radius all live in theme.json. If a value is not expressible through theme.json presets, question whether the design needs it.
+2. **theme.json as the single source of truth.** Palette (with semantic names: primary, dark, surface, neutral, ink, muted), type scale (display, h1, h2, h3, body, small), spacing presets on a fixed scale (for example 8 / 16 / 24 / 40 / 64 / 96), button styles, and border radius all live in theme.json. If a value is not expressible through theme.json presets, question whether the design needs it.
 
 3. **Request the design system alongside the design.** When a design is generated (by Claude Design or otherwise), ask for a design system summary structured to drop straight into theme.json: named colors, type scale, spacing scale, button styles including hover, card style (radius, shadow, padding), and section spacing rules for vertical rhythm.
 

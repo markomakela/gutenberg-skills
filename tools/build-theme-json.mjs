@@ -173,10 +173,15 @@ function buildStyles(doc, { fontSizes, families, lineHeight }) {
   elements.button = buildButton(doc.elements.button);
   if (doc.elements.link) elements.link = buildLink(doc.elements.link);
 
+  // Body text prefers an "ink" palette slug over "text": a palette entry with
+  // slug "text" makes WordPress emit `.has-text-color { color: ... !important }`,
+  // which collides with core's has-text-color marker class and overrides every
+  // named text colour on the page.
+  const inkSlug = doc.palette.some((c) => c.slug === "ink") ? "ink" : "text";
   return {
     color: {
       background: PRESET_VAR.color("surface"),
-      text: PRESET_VAR.color("text")
+      text: PRESET_VAR.color(inkSlug)
     },
     typography: rootTypography,
     spacing: {

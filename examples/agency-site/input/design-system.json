@@ -12,7 +12,7 @@
     { "slug": "dark", "name": "Dark", "color": "#12261f" },
     { "slug": "surface", "name": "Surface", "color": "#ffffff" },
     { "slug": "neutral", "name": "Neutral", "color": "#f4f4f1" },
-    { "slug": "text", "name": "Text", "color": "#1b1b1b" },
+    { "slug": "ink", "name": "Ink", "color": "#1b1b1b" },
     { "slug": "muted", "name": "Muted", "color": "#5c625f" }
   ],
 

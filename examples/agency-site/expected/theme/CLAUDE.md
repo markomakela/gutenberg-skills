@@ -22,7 +22,7 @@ node tools/build-theme-json.mjs --input design-system.json --out theme.json
 | `dark` | Dark | #12261f |
 | `surface` | Surface | #ffffff |
 | `neutral` | Neutral | #f4f4f1 |
-| `text` | Text | #1b1b1b |
+| `ink` | Ink | #1b1b1b |
 | `muted` | Muted | #5c625f |
 
 Brand colour is for buttons, key accents and at most one CTA band. It is not a

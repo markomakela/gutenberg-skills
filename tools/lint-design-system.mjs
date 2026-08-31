@@ -11,7 +11,7 @@
  * Errors block. Warnings do not, they report design system drift.
  */
 
-const SEMANTIC_PALETTE = ["primary", "dark", "surface", "neutral", "text", "muted"];
+const SEMANTIC_PALETTE = ["primary", "dark", "surface", "neutral", "ink", "muted"];
 
 // Every place a slug points at a definition list elsewhere in the document.
 const REFERENCES = [

@@ -99,9 +99,12 @@ than reverse engineering it from a mockup afterwards.
 
 Rules:
 
-- Semantic palette slugs only: `primary`, `dark`, `surface`, `neutral`, `text`,
+- Semantic palette slugs only: `primary`, `dark`, `surface`, `neutral`, `ink`,
   `muted`. Every extra colour is one more an editor can pick wrongly, and the
-  linter warns about each one.
+  linter warns about each one. Body text is `ink` and never `text`: a palette
+  slug named `text` makes WordPress emit `.has-text-color` with `!important`,
+  which collides with the marker class every coloured block already carries
+  and overrides half the palette.
 - Snap measured values to the nearest spacing preset. Do not add a preset to fit
   a measurement. If a value genuinely cannot snap, that is a design question.
 - Brand colour is buttons, key accents, and at most one CTA band. Never a

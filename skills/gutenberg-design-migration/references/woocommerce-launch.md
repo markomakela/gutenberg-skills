@@ -197,14 +197,15 @@ maintain.
 - **A palette slug named `text` breaks every colour defined before it.**
   WordPress emits `.has-text-color { color: … !important }` for the named
   colour, which is byte-identical to the marker class every coloured block gets.
-  Same specificity, same `!important` — source order decides. Half the palette
+  Same specificity, same `!important`, so source order decides. Half the palette
   silently rendered as the text colour. Either rename the slug or re-emit each
-  colour with a `:root` prefix.
+  colour with a `:root` prefix. The toolchain in this repo names the slug
+  `ink` for exactly this reason, and `build-theme-json.mjs` prefers it.
 - **Text over photography must use fixed white**, not a palette token that flips
   with the colour scheme. Scope the rule to the cover block, not to one section,
   so the next section inherits it.
 - **`[hidden]` is a UA rule that any author `display` beats.** An element with
-  `display: flex` that JS hides with `hidden` stays visible — and if it is a
+  `display: flex` that JS hides with `hidden` stays visible, and if it is a
   `position: fixed` overlay it swallows every click on the page. One defensive
   `[hidden] { display: none !important }` is worth more than fixing the third
   occurrence.

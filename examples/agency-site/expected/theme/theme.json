@@ -37,8 +37,8 @@
           "color": "#f4f4f1"
         },
         {
-          "slug": "text",
-          "name": "Text",
+          "slug": "ink",
+          "name": "Ink",
           "color": "#1b1b1b"
         },
         {
@@ -168,7 +168,7 @@
   "styles": {
     "color": {
       "background": "var:preset|color|surface",
-      "text": "var:preset|color|text"
+      "text": "var:preset|color|ink"
     },
     "typography": {
       "fontFamily": "var:preset|font-family|body",
