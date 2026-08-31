@@ -42,6 +42,11 @@ make correct code look broken, importing a real product feed, taking over a live
 domain, and the verification discipline that keeps one round from becoming five.
 Half of it changes decisions made in the scaffold.
 
+**Whatever the target, read `references/launch.md` before the site goes
+live.** A theme that validates and activates is not yet a site that is safe to
+leave running, and the two findings every scanner reports are WordPress
+defaults that no rebuild touches.
+
 **If an existing site is being replaced rather than a new one built, read
 `references/content-migration.md` after stage 5.** The six stages produce an
 empty theme; that file is how the old site's pages get into it: reading a page
@@ -248,8 +253,20 @@ again after the import, not only after authoring.
 Only when the target is a WooCommerce shop. See
 `references/woocommerce-launch.md`: WooCommerce block behaviour, caching,
 catalogue import, slug parity when replacing a live site, the design faults that
-only appear in production, the public endpoints WordPress leaves open by
-default, and a launch checklist.
+only appear in production, and the two launch items the shop adds to the
+general list.
+
+## Going live
+
+Every project, shop or not. See `references/launch.md`: the checklist that
+outlives the theme, and the two endpoints WordPress leaves open to anyone by
+default, which are the findings a security scan returns the week after launch.
+`assets/webaula-rest-user-hardening.php` is the mu-plugin that closes them,
+and the file explains why it is only half of the fix.
+
+This is not numbered as a stage because it produces no artifact the next stage
+consumes. It is the last thing done, and skipping it is invisible until
+somebody scans the site.
 
 ## What this pipeline does not do
 
