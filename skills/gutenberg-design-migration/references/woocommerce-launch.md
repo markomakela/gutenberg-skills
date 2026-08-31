@@ -32,9 +32,9 @@ This is first because it is the difference between one round and five.
   unreadable text reported 19 hits, 13 of which were wrapper elements
   inheriting a colour they never painted.
 - **Measure warm and cold separately.** Cached HTML came back in 8 ms and
-  uncached in 0.5–2.2 s. Optimising the wrong one wastes a day. Profile with a
-  temporary mu-plugin that timestamps `plugins_loaded`, `init`, `wp`,
-  `template_redirect`, `wp_footer`, `shutdown` — the theme's own code was 80 ms
+  uncached in 0.5 to 2.2 s. Optimising the wrong one wastes a day. Profile
+  with a temporary mu-plugin that timestamps `plugins_loaded`, `init`, `wp`,
+  `template_redirect`, `wp_footer`, `shutdown`. The theme's own code was 80 ms
   of a 2.2 s page.
 - **SVG elements have no `offsetHeight`.** A visibility probe reported both
   icon states hidden because SVGElement lacks the HTML offset properties.
@@ -54,12 +54,12 @@ This is first because it is the difference between one round and five.
 - Cart and Checkout are **React apps**. Server-side `gettext` never reaches
   them; they translate via `wp.i18n` in JS. Their inner structure comes from the
   block tree, not from anything you can author.
-- **`perPage` is ignored when a collection has `inherit: true`** — the block
+- **`perPage` is ignored when a collection has `inherit: true`.** The block
   runs the main query, so `loop_shop_per_page` decides.
 - Client-side filtering needs **`isProductCollectionBlock: true`** in the query
   attrs; hand-written markup lacks it and every filter change becomes a full
   page load. Filter blocks get the collection's `queryId` through
-  `render_block_context`, not through nesting — nesting kills the AJAX.
+  `render_block_context`, not through nesting; nesting kills the AJAX.
 - **The related-products collection supplies a precomputed `post__in`**, not a
   taxonomy condition. Adding your own condition *intersects* that list and can
   produce an empty section on some products and a full one on others. Replace
@@ -67,7 +67,7 @@ This is first because it is the difference between one round and five.
 - **`queryId` lives in different places depending on the filter.** In
   `query_loop_block_query_vars` the block's attrs are empty and
   `$block->context['queryId']` carries. In `render_block_*` the collection is
-  the context *provider*, so its own context has no `queryId` — read
+  the context *provider*, so its own context has no `queryId`: read
   `$block['attrs']['queryId']`.
 - The taxonomy filter renders **twice** (desktop rail + mobile drawer) and ships
   every term in `data-wp-context`. On a 541-term catalogue that is 179 kB of
@@ -79,7 +79,7 @@ This is first because it is the difference between one round and five.
   Woo. `is-flex-container` forces `flex-wrap: wrap`; the grid item needs an
   explicit width; the cart has its own phone layout under 699px that overlaps
   your own.
-- **Woo's REST image whitelist is narrower than WordPress's** — AVIF is
+- **Woo's REST image whitelist is narrower than WordPress's.** AVIF is
   rejected with a permissions-sounding error.
 - **When removing a Woo feature does not stay removed, mute its template
   instead of chasing hooks.** The PhotoSwipe markup came back through at least
@@ -89,16 +89,16 @@ This is first because it is the difference between one round and five.
   matter how many code paths request it.
 - **`filterable: true` does not make a non-inherit collection honour filter
   params.** On the archive the filters hit the MAIN query through Woo's
-  runtime clause filters; a collection running its own query never sees them
-  — the URL changes and the grid does not. Read the params
+  runtime clause filters; a collection running its own query never sees them,
+  so the URL changes and the grid does not. Read the params
   (`categories`, `min_price`/`max_price`, `filter_stock_status`) into the
   query yourself.
 - **The editor renumbers `queryId` on save.** Reserved ids (91/92) silently
-  became 0 after one editor save and every rule keyed on them stopped firing —
+  became 0 after one editor save and every rule keyed on them stopped firing,
   with no error, because an unrestricted grid still looks like a grid. Never
   identify anything by an attribute the editor rewrites (`queryId`, data
   attributes, hand-added classes on saved templates). Identify by the *page*,
-  a registered block name, or a `className` the block ships with — and put the
+  a registered block name, or a `className` the block ships with. Put the
   identification in ONE function, then grep the old way out of every call
   site in the same change.
 
@@ -112,11 +112,11 @@ This is first because it is the difference between one round and five.
   with `curl -D-` that the cart endpoint is not a cache hit.
 - **Minified CSS/JS copies are keyed on `?ver=`.** Purging the page cache does
   not invalidate them. Bump the theme version whenever a theme asset changes,
-  and the `block.json` version whenever a block asset changes — otherwise the
+  and the `block.json` version whenever a block asset changes; otherwise the
   browser keeps the old file and the fix "doesn't deploy".
 - **Combining CSS is usually safe, combining JS is not.** Block scripts and the
   React cart depend on execution order.
-- **Search and cart pages are deliberately uncached — and therefore
+- **Search and cart pages are deliberately uncached, and therefore
   unoptimised.** They load every stylesheet separately. Expect them to be the
   heaviest pages on the site.
 - **Warm the cache.** With thousands of products most visits would otherwise
@@ -125,25 +125,25 @@ This is first because it is the difference between one round and five.
 - **Editing terms with direct SQL leaves WooCommerce's own caches stale.**
   `wc_taxonomy_hierarchy_product_cat` (an option, not a transient) and
   `wc_filter_data_*` transients keep the old slugs. Symptom: a category
-  disappears from the filter tree with no error. `wp cache flush` does not help
-  — it is stored data. Search the options table for the old string.
+  disappears from the filter tree with no error. `wp cache flush` does not help;
+  it is stored data. Search the options table for the old string.
 
 ## 4. Importing a real catalogue
 
-- **NO EMAILS may leave during any import, migration or prod→dev refresh —
+- **NO EMAILS may leave during any import, migration or prod→dev refresh,
   and the ONLY reliable block is `pre_wp_mail`.** Woo's enable filter is
   per-email (`woocommerce_email_enabled_{id}`); a filter added on the bare
   name `woocommerce_email_enabled` does NOTHING and fails silently. That
   silent failure sent ~550 "your order is complete" mails to real customers
   from a staging import before the real block was added. Before EVERY run:
   a `pre_wp_mail` filter (priority 0) that returns false and LOGS every
-  attempt — and verify the log after the run. Never assume staging cannot
+  attempt, and verify the log after the run. Never assume staging cannot
   deliver mail: shared hosts proxy sendmail to a relay, and the domain's
   SPF often authorizes it. `wp_insert_user` sends no welcome mail by
   itself; review imports additionally need `notify_moderator`/
   `notify_post_author` muted, and order imports
   `woocommerce_can_reduce_order_stock` → false. The block lives only in
-  the import process — later status edits in wp-admin mail normally.
+  the import process; later status edits in wp-admin mail normally.
 
 - **Run the importer under WP-CLI, never the browser.** Same class, no AJAX
   timeouts. `require_once` the importer files; Woo's autoloader does not find
@@ -151,25 +151,25 @@ This is first because it is the difference between one round and five.
 - **`wp eval-file` without `--user=1` silently drops every category**:
   `parse_categories_field()` starts with a capability check and breaks out of
   the loop. Tags are unaffected, so the damage looks random.
-- **`update_existing => true` does not create missing products** — it skips
+- **`update_existing => true` does not create missing products.** It skips
   them. A bulk import is two passes over the same file.
 - **Match by SKU, never by name or exported ID.** Names are exactly what
   changes between exports; IDs point at the source install.
 - **Force GD for the image pass.** Imagick allocates outside PHP's
-  `memory_limit` and the process is SIGKILLed (exit 137) with no log line — one
-  oversized source image kills the run.
+  `memory_limit` and the process is SIGKILLed (exit 137) with no log line.
+  One oversized source image kills the run.
 - **Split long imports into short processes** with a byte-offset state file, so
   a killed process costs one batch.
 - Product bundles and other add-on types are rejected wholesale if the plugin is
   absent; convert the type in the source data.
 - **Post-body images do not travel with the media library.** Importing posts
-  brings their `<img>` markup but not the files behind it — measured 890 of
+  brings their `<img>` markup but not the files behind it: measured 890 of
   1 183 referenced upload files missing while every product image was fine.
   When the new site takes over the old address, fetch the missing files from
   the live site into the *same* uploads paths instead of rewriting content.
   Two server traps in that run: `/tmp` may be mounted noexec (run
   `bash script.sh`, not `./script.sh`), and an old `file` magic database does
-  not recognise AVIF — verify by bytes (`ftypavif` at offset 4), not by
+  not recognise AVIF, so verify by bytes (`ftypavif` at offset 4), not by
   reported content type.
 
 ## 5. Replacing a live site at the same address
@@ -179,12 +179,12 @@ building a redirect table. A redirect is an extra hop and thousands of rows to
 maintain.
 
 - Products pair by **SKU**; categories have no SKU, so pair by **name path**
-  ("BMW › 3-sarja › F30") — the import carried names, not slugs.
+  ("BMW › 3-sarja › F30"): the import carried names, not slugs.
 - **Rename in two passes**: give every changing row a temporary slug, then the
   target. Otherwise chains and swaps stay unresolved (43 conflicts became 2).
 - Write with SQL, not `wp_update_post`: the only changing column is `post_name`,
   and the save chain costs ~25 ms per product.
-- **`_wp_old_slug` redirects do not work for pages** — core requires the `name`
+- **`_wp_old_slug` redirects do not work for pages.** Core requires the `name`
   query var and pages use `pagename`. Map renamed pages by hand.
 - **Turn off `redirect_guess_404_permalink`.** On a large catalogue it sends
   `/cart/` to a product called "Cartec sponge". A clean 404 is better than a
