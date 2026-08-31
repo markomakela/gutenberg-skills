@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: WebAula - REST- ja XML-RPC-suojaus
- * Description: Estaa kayttajatunnusten listaamisen REST API:n users-paatepisteesta, ?author=N-kyselysta ja oEmbed-vastauksesta kirjautumattomilta. Sulkee lisaksi XML-RPC:n kokonaan. Kirjautuneille (lohkoeditori, WooCommerce-nakymat) toiminta sailyy ennallaan.
- * Version: 1.1.0
+ * Description: Estaa kayttajatunnusten listaamisen REST API:n users-paatepisteesta, ?author=N-kyselysta ja oEmbed-vastauksesta kirjautumattomilta. Sulkee lisaksi XML-RPC:n kokonaan, yleistaa kirjautumisen virheilmoituksen, poistaa sovellussalasanat ja tiedostoeditorin. Kirjautuneille (lohkoeditori, WooCommerce-nakymat) toiminta sailyy ennallaan.
+ * Version: 1.2.0
  * Author: WebAula
  */
 
@@ -99,3 +99,54 @@ add_filter(
 );
 
 remove_action( 'wp_head', 'rsd_link' );
+
+/**
+ * 5) Kirjautumisen virheilmoitus ei kerro onko tunnus olemassa.
+ *
+ * WordPress sanoo "Tuntematon kayttajatunnus" vs "Salasana kayttajalle X on
+ * vaara", eli lomake vuotaa saman tiedon jonka kohdat 1-3 sulkivat. Suodatin
+ * on authenticate eika login_errors, koska WooCommercen Oma tili -lomake ei
+ * kayta kirjautumissivua lainkaan mutta kulkee saman authenticate-ketjun
+ * lapi. Prioriteetti 40 ajaa coren omien tarkistusten jalkeen.
+ */
+add_filter(
+	'authenticate',
+	function ( $user ) {
+		if ( ! is_wp_error( $user ) ) {
+			return $user;
+		}
+
+		$leaky = array( 'invalid_username', 'invalid_email', 'incorrect_password' );
+
+		if ( ! array_intersect( $leaky, $user->get_error_codes() ) ) {
+			return $user;
+		}
+
+		return new WP_Error(
+			'invalid_login',
+			__( '<strong>Virhe:</strong> Kirjautuminen epaonnistui.' )
+		);
+	},
+	40
+);
+
+/**
+ * 6) Sovellussalasanat pois.
+ *
+ * Paalla oletuksena WP 5.6:sta lahtien ja ne OHITTAVAT kaksivaiheisen
+ * tunnistuksen, joten 2FA:n kayttoonotto ei kata kaikkea niin kauan kuin nama
+ * ovat kaytettavissa. Poista tama rivi jos jokin integraatio kayttaa niita.
+ */
+add_filter( 'wp_is_application_passwords_available', '__return_false' );
+
+/**
+ * 7) Tiedostoeditori pois wp-administa.
+ *
+ * Ilman tata kaapattu yllapitajaistunto on suora koodin suoritus eika pelkka
+ * sisallon muokkaus. Vakiopaikka on wp-config.php, mutta vakio tarkistetaan
+ * vasta map_meta_cap()issa eli hyvin mu-plugin-vaiheen jalkeen, joten se
+ * toimii myos taalta ja koko kovennus pysyy yhdessa tiedostossa.
+ */
+if ( ! defined( 'DISALLOW_FILE_EDIT' ) ) {
+	define( 'DISALLOW_FILE_EDIT', true );
+}
