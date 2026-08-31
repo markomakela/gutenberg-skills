@@ -201,6 +201,15 @@ maintain.
   silently rendered as the text colour. Either rename the slug or re-emit each
   colour with a `:root` prefix. The toolchain in this repo names the slug
   `ink` for exactly this reason, and `build-theme-json.mjs` prefers it.
+- **`defaultPalette: false` hides the default palette, it does not stop its
+  CSS.** Core's own comment says the flag makes the palette "hidden from the
+  user", and that is all it does. The stylesheet is a separate path:
+  `wp_get_global_stylesheet()` always builds presets from the default, theme
+  and custom origins, so the twelve core colours ship their custom properties
+  and their `.has-*-color { ... !important }` rules on every page anyway.
+  Measured on 7.1 with the flag set. Nothing in theme.json changes it, so an
+  audit that reads the rendered CSS will always find them and should not file
+  it as a theme fault.
 - **Text over photography must use fixed white**, not a palette token that flips
   with the colour scheme. Scope the rule to the cover block, not to one section,
   so the next section inherits it.
