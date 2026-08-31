@@ -87,6 +87,57 @@ wp rewrite flush
 Rolling back is deleting the file, removing the marked block, and setting
 `disable-author` to false.
 
+## The login is what is left
+
+Closing XML-RPC moves the traffic, it does not remove the attacker, and
+`wp-login.php` is where it goes. Four things matter there. The asset above
+does three of them.
+
+**The login form still answers the question the REST endpoint no longer
+does.** WordPress says "Unknown username" for one case and "The password you
+entered for X is incorrect" for the other, so the enumeration you closed comes
+back through the form. Generalise it on `authenticate` rather than on
+`login_errors`: WooCommerce's My Account form never touches the login page,
+but it goes through the same authentication chain.
+
+**Application passwords bypass two-factor authentication.** They have been
+available by default since 5.6 and no second-factor prompt can interrupt them,
+because they are not a form login. Turning 2FA on while leaving them enabled
+secures the front door and leaves the side one open. Disable them unless an
+integration is using them, and check that before assuming.
+
+**The file editor turns a stolen admin session into code execution** rather
+than into vandalism. `DISALLOW_FILE_EDIT` costs one line.
+
+### Two-factor authentication
+
+The fourth, and deliberately not in the asset: it needs a form, a mail
+template and a flow of its own, which is more than a hardening file should
+carry. One implementation worth copying lives in a WebAula theme as
+`inc/two-factor.php`. A six digit code by email after the password, required
+only of accounts holding `manage_options` or `manage_woocommerce` so customer
+logins are untouched, a trusted device cookie hashed against the first twelve
+characters of the password hash so that changing the password invalidates
+every remembered device, and a kill switch constant for the day mail stops
+flowing. That switch is not a weakness. It is what keeps a mail outage from
+locking everyone out of the shop.
+
+Three things that implementation learned the hard way, and any other one will
+have to learn too:
+
+- **Hook `authenticate`, not the login form.** The first version guarded
+  wp-login.php and left WooCommerce's My Account login entirely outside the
+  second factor. On a shop that is not an edge case, it is how the shop
+  manager signs in.
+- **The field names differ.** wp-login.php posts `log` and `pwd`, Woo's form
+  posts `username` and `password`, and the redirect is `redirect_to` in core
+  against `redirect` in Woo. Miss the pair and you either skip the check or
+  drop the destination.
+- **A form cannot interrupt every login.** XML-RPC and application passwords
+  authenticate without one, which is the other half of why both are closed
+  above. A second factor is only as good as the routes that cannot go around
+  it.
+
 ## Launch checklist
 
 - [ ] Old→new URL parity measured on a sample of the old sitemap
@@ -102,6 +153,18 @@ Rolling back is deleting the file, removing the marked block, and setting
 - [ ] `/xmlrpc.php` denied before PHP runs, in `.htaccess` or the WAF
       (`xmlrpc_enabled` leaves `pingback.ping`, and a mu-plugin has booted
       WordPress before it can refuse)
+- [ ] Login errors generalised on `authenticate`, so the form does not answer
+      what the REST endpoint no longer does
+- [ ] Application passwords disabled, or a note saying which integration needs
+      them
+- [ ] `DISALLOW_FILE_EDIT` set
+- [ ] Two-factor on every account that can manage the site or the shop
+- [ ] Rate limit or geo rule on `wp-login.php` at the CDN, where the traffic
+      moves once XML-RPC closes
+- [ ] Registration settings deliberate: `users_can_register`, Woo's My Account
+      registration and its checkout registration each answer a different
+      question, and open registration with the default role is how spam
+      accounts arrive
 - [ ] SEO plugin active, sitemap responding
 - [ ] Analytics/tag manager container carried over, gated to the production host
       so staging never pollutes production data
