@@ -5,8 +5,8 @@
  * Categories: agency-site
  */
 ?>
-<!-- wp:cover {"overlayColor":"dark","isUserOverlayColor":true,"isDark":true,"align":"full","layout":{"type":"constrained"}} -->
-<div class="wp-block-cover alignfull"><span aria-hidden="true" class="wp-block-cover__background has-dark-background-color has-background-dim-100 has-background-dim"></span><div class="wp-block-cover__inner-container">
+<!-- wp:cover {"overlayColor":"dark","isUserOverlayColor":true,"isDark":true,"align":"full","style":{"spacing":{"padding":{"top":"var(--wp--custom--section-rhythm--default)","bottom":"var(--wp--custom--section-rhythm--default)"}}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-cover alignfull" style="padding-top:var(--wp--custom--section-rhythm--default);padding-bottom:var(--wp--custom--section-rhythm--default)"><span aria-hidden="true" class="wp-block-cover__background has-dark-background-color has-background-dim-100 has-background-dim"></span><div class="wp-block-cover__inner-container">
 <!-- wp:heading {"level":1,"fontSize":"display"} -->
 <h1 class="wp-block-heading has-display-font-size">Rakennamme verkkopalvelut jotka kestavat</h1>
 <!-- /wp:heading -->

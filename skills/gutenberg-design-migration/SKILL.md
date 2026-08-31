@@ -117,16 +117,20 @@ Rules:
   site.
 - Colour references outside `palette` are slugs. The schema rejects hex there,
   which is what turns the house rule into a failure rather than a memory.
+- `layout.rootPadding` is optional and takes a CSS length. The generator turns
+  it into root padding with root-padding-aware alignments, so `alignfull`
+  sections still bleed to the viewport edge while their content keeps a gutter.
 
 Check both the shape and the cross references. The schema cannot see that
 `"primayr"` does not exist:
 
 ```bash
-node tools/build-theme-json.mjs --input design-system.json --out /dev/null
+node tools/lint-design-system.mjs design-system.json
 ```
 
-The generator refuses to run on a dangling reference, so a clean run means the
-document is internally consistent.
+The linter exits 1 on errors such as a dangling reference and prints warnings,
+palette drift among them, to stderr. A clean run means the document is
+internally consistent.
 
 ## Stage 3: scaffold
 
@@ -147,7 +151,10 @@ to catch:
 node tools/build-theme-json.mjs --input design-system.json --out theme/theme.json --check
 ```
 
-An existing directory is refused unless `--force` is passed.
+An existing directory is refused unless `--force` is passed. `--force`
+rewrites the generated files but preserves `templates/front-page.html` and
+`CLAUDE.md`, the two authored seed files, so regenerating after a design
+system change does not discard sections written in stage 5.
 
 ## Stage 4: section mapping
 
@@ -194,6 +201,9 @@ House rules on top of whatever that skill says:
 node tools/validate-blocks.mjs --theme theme/
 ```
 
+`--file page.html` validates a single file instead, and passing `--file`
+together with `--theme` checks that one file against the theme's presets.
+
 Structural checks come from the vendored WordPress parser: delimiter mismatches,
 invalid attribute JSON, style attributes that do not exist, missing required
 classes. On top of those, five house rules, each with an id that `--skip-rule`
@@ -206,6 +216,11 @@ accepts:
 | `no-absolute-position` | error | `position: absolute` or `fixed` |
 | `no-dashes` | error | an em dash or en dash in copy |
 | `soft-hyphen-hint` | warn | a long compound in a heading or button with no `&shy;` |
+
+One warning sits outside the table and takes `--skip-rule` the same way:
+`buildability-report`, raised when no buildability report is found. With no
+theme.json in scope, `preset-slugs-exist` degrades to a warning under its own
+id rather than checking nothing silently.
 
 `--json` emits the findings as structured data, which is the form to use when
 fixing your own markup: read the failures, fix, rerun, without a human relaying

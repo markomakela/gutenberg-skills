@@ -4,6 +4,7 @@
  * house rules.
  *
  *   node tools/validate-blocks.mjs --file page.html
+ *   node tools/validate-blocks.mjs --file page.html --theme theme/
  *   node tools/validate-blocks.mjs --theme theme/
  *   node tools/validate-blocks.mjs --theme theme/ --json
  *   node tools/validate-blocks.mjs --theme theme/ --skip-rule soft-hyphen-hint
@@ -47,11 +48,6 @@ function stripPhpHeader(source) {
   return end === -1 ? source : source.slice(end + 2);
 }
 
-/** Text a reader sees: block comments and tags removed, entities left alone. */
-function textContent(markup) {
-  return markup.replace(DELIMITER, " ").replace(/<[^>]*>/g, " ");
-}
-
 function ruleNoRawHex(markup) {
   const found = [];
 
@@ -79,20 +75,32 @@ function ruleNoRawHex(markup) {
 function collectPresetReferences(markup) {
   const refs = [];
   const push = (kind, slug) => refs.push({ kind, slug });
+  // style.typography.fontSize carries custom lengths like "13px" that the
+  // fontSize pattern also matches, so digit-leading values are skipped for
+  // font sizes only. Colour attributes never legally carry a length, so their
+  // slugs are checked even when they start with a digit.
+  const pushAttr = (kind, slug) => {
+    if (kind === "font-size" && /^\d/.test(slug)) return;
+    push(kind, slug);
+  };
 
   for (const [, kind, slug] of markup.matchAll(
     /var:preset\|(color|spacing|font-size|font-family)\|([a-z0-9-]+)/g
   )) {
     push(kind, slug);
   }
-  for (const [, slug] of markup.matchAll(/"(?:backgroundColor|textColor)":"([a-z0-9-]+)"/g)) {
-    push("color", slug);
+  // gradient is left out: default WordPress gradients are active, so gradient
+  // slugs cannot be checked against the palette.
+  for (const [, slug] of markup.matchAll(
+    /"(?:backgroundColor|textColor|overlayColor|borderColor|iconColor)":"([a-z0-9-]+)"/g
+  )) {
+    pushAttr("color", slug);
   }
   for (const [, slug] of markup.matchAll(/"fontSize":"([a-z0-9-]+)"/g)) {
-    push("font-size", slug);
+    pushAttr("font-size", slug);
   }
   for (const [, slug] of markup.matchAll(/"fontFamily":"([a-z0-9-]+)"/g)) {
-    push("font-family", slug);
+    pushAttr("font-family", slug);
   }
   return refs;
 }
@@ -156,20 +164,22 @@ const EN_DASH = String.fromCodePoint(0x2013);
 const SOFT_HYPHEN_CHAR = String.fromCodePoint(0x00ad);
 
 function ruleNoDashes(markup) {
-  const text = textContent(markup);
+  // Scans the raw markup, block delimiters included: a dash inside a block
+  // attribute, a navigation label or an image alt, ships to the front end
+  // all the same.
   const out = [];
-  if (text.includes(EM_DASH)) {
+  if (markup.includes(EM_DASH)) {
     out.push({
       rule: "no-dashes",
       level: "error",
-      message: "copy contains an em dash. House style is commas, periods, or a restructured sentence."
+      message: "the markup contains an em dash, block attributes included. House style is commas, periods, or a restructured sentence."
     });
   }
-  if (text.includes(EN_DASH)) {
+  if (markup.includes(EN_DASH)) {
     out.push({
       rule: "no-dashes",
       level: "error",
-      message: "copy contains an en dash. House style is commas, periods, or a restructured sentence."
+      message: "the markup contains an en dash, block attributes included. House style is commas, periods, or a restructured sentence."
     });
   }
   return out;
@@ -206,7 +216,7 @@ function ruleSoftHyphenHint(markup) {
  * @param {string} [options.label] shown in messages
  * @param {object} [options.themeJson] parsed theme.json, enables preset-slugs-exist
  * @param {string[]} [options.skip] rule ids to leave out
- * @returns {{errors: object[], warnings: object[]}}
+ * @returns {{errors: object[], warnings: object[], hasSchemas: boolean}}
  */
 export function validateMarkup(markup, options = {}) {
   const { label = "markup", themeJson = null, skip = [] } = options;
@@ -238,7 +248,8 @@ export function validateMarkup(markup, options = {}) {
 
   return {
     errors: findings.filter((f) => f.level === "error"),
-    warnings: findings.filter((f) => f.level === "warn")
+    warnings: findings.filter((f) => f.level === "warn"),
+    hasSchemas: upstream.loadBlockSchemas()
   };
 }
 
@@ -273,7 +284,7 @@ export function validateTheme(themeDir, skip = [], reportPath = null) {
   const errors = [];
   const warnings = [];
 
-  if (!themeJson) {
+  if (!themeJson && !skip.includes("preset-slugs-exist")) {
     warnings.push({
       rule: "preset-slugs-exist",
       level: "warn",
@@ -285,7 +296,7 @@ export function validateTheme(themeDir, skip = [], reportPath = null) {
   // The stage 1 gate is the cheapest step in the pipeline and the easiest to
   // skip under deadline pressure, so its absence is worth saying out loud.
   const report = reportPath ?? join(themeDir, "buildability-report.md");
-  if (!existsSync(report)) {
+  if (!existsSync(report) && !skip.includes("buildability-report")) {
     warnings.push({
       rule: "buildability-report",
       level: "warn",
@@ -294,7 +305,8 @@ export function validateTheme(themeDir, skip = [], reportPath = null) {
     });
   }
 
-  for (const file of markupFiles(themeDir)) {
+  const files = markupFiles(themeDir);
+  for (const file of files) {
     const raw = readFileSync(file, "utf8");
     const markup = extname(file) === ".php" ? stripPhpHeader(raw) : raw;
     const label = relative(themeDir, file).split(sep).join("/");
@@ -303,7 +315,7 @@ export function validateTheme(themeDir, skip = [], reportPath = null) {
     warnings.push(...result.warnings);
   }
 
-  return { errors, warnings, fileCount: markupFiles(themeDir).length };
+  return { errors, warnings, fileCount: files.length, hasSchemas: upstream.loadBlockSchemas() };
 }
 
 function parseArgs(argv) {
@@ -318,11 +330,18 @@ function parseArgs(argv) {
   }
   if (!args.file && !args.theme) {
     throw new Error(
-      "usage: validate-blocks.mjs (--file <file> | --theme <dir>) [--report <file>] [--json] [--skip-rule <id>]"
+      "usage: validate-blocks.mjs (--file <file> [--theme <dir>] | --theme <dir> [--report <file>]) [--json] [--skip-rule <id>]"
     );
   }
+  if (args.report && (!args.theme || args.file)) {
+    throw new Error("--report is only read by a full --theme run. Drop --report or the --file argument.");
+  }
+  // buildability-report is not a markup rule, but its warning is skippable.
+  const skippable = [...RULES, "buildability-report"];
   for (const rule of args.skip) {
-    if (!RULES.includes(rule)) throw new Error(`unknown rule: ${rule}. Known: ${RULES.join(", ")}`);
+    if (!skippable.includes(rule)) {
+      throw new Error(`unknown rule: ${rule}. Known: ${skippable.join(", ")}`);
+    }
   }
   return args;
 }
@@ -332,6 +351,12 @@ function report(result, json) {
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     return result.errors.length > 0 ? 1 : 0;
   }
+
+  process.stdout.write(
+    result.hasSchemas
+      ? "block schemas: active\n"
+      : "block schemas: not loaded (set GUTENBERG_DIR)\n"
+  );
 
   for (const finding of result.errors) {
     process.stdout.write(`error  ${finding.file}  [${finding.rule}] ${finding.message}\n`);
@@ -348,20 +373,32 @@ function report(result, json) {
 function main(argv) {
   const args = parseArgs(argv);
 
-  if (args.theme) {
-    return report(validateTheme(args.theme, args.skip, args.report ?? null), args.json);
+  if (args.file) {
+    const raw = readFileSync(args.file, "utf8");
+    const markup = extname(args.file) === ".php" ? stripPhpHeader(raw) : raw;
+    // With --theme alongside, the file is checked against that theme.json and
+    // preset-slugs-exist reports at error level instead of degrading to warn.
+    let themeJson = null;
+    if (args.theme) {
+      const themeJsonPath = join(args.theme, "theme.json");
+      themeJson = existsSync(themeJsonPath)
+        ? JSON.parse(readFileSync(themeJsonPath, "utf8"))
+        : null;
+    }
+    return report(
+      validateMarkup(markup, { label: args.file, themeJson, skip: args.skip }),
+      args.json
+    );
   }
 
-  const raw = readFileSync(args.file, "utf8");
-  const markup = extname(args.file) === ".php" ? stripPhpHeader(raw) : raw;
-  return report(validateMarkup(markup, { label: args.file, skip: args.skip }), args.json);
+  return report(validateTheme(args.theme, args.skip, args.report ?? null), args.json);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
-    process.exit(main(process.argv.slice(2)));
+    process.exitCode = main(process.argv.slice(2));
   } catch (error) {
     process.stderr.write(`${error.message}\n`);
-    process.exit(1);
+    process.exitCode = 1;
   }
 }

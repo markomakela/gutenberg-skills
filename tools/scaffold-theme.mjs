@@ -20,15 +20,41 @@ import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync } from 
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { buildThemeJson, serialize } from "./build-theme-json.mjs";
+import { lintDesignSystem } from "./lint-design-system.mjs";
+
+// Seeded once, never overwritten, --force included. Stage 5 authors the front
+// page and CLAUDE.md accumulates lessons by hand, so a rerun must not flatten
+// either.
+const SEED_FILES = new Set(["templates/front-page.html", "CLAUDE.md"]);
 
 /** agency-site -> agency_site, for PHP function prefixes */
 function phpPrefix(textDomain) {
   return textDomain.replace(/-/g, "_");
 }
 
+/** For a PHP single-quoted string literal. Backslash first, then the quote. */
+function phpSingleQuote(value) {
+  return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+
+/** For HTML text and attribute values. */
+function htmlEscape(value) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+// A star-slash pair in a name would close the style.css header and the PHP
+// docblocks early, leaving the rest of the name as stray source text.
+function commentSafe(value) {
+  return value.replace(/\*\//g, "* /");
+}
+
 function styleCss(meta) {
   return `/*
-Theme Name: ${meta.name}
+Theme Name: ${commentSafe(meta.name)}
 Text Domain: ${meta.textDomain}
 Requires at least: ${meta.wpVersion}
 Tested up to: ${meta.wpVersion}
@@ -51,7 +77,7 @@ function functionsPhp(meta) {
   const prefix = phpPrefix(meta.textDomain);
   return `<?php
 /**
- * ${meta.name} theme setup.
+ * ${commentSafe(meta.name)} theme setup.
  *
  * @package ${meta.textDomain}
  */
@@ -86,7 +112,7 @@ add_action( 'after_setup_theme', '${prefix}_setup' );
 function ${prefix}_pattern_category() {
 	register_block_pattern_category(
 		'${meta.textDomain}',
-		array( 'label' => __( '${meta.name}', '${meta.textDomain}' ) )
+		array( 'label' => __( '${phpSingleQuote(meta.name)}', '${meta.textDomain}' ) )
 	);
 }
 add_action( 'init', '${prefix}_pattern_category' );
@@ -190,9 +216,12 @@ add_action( 'init', '${prefix}_post_types' );
 `;
 }
 
+// Parts render inside the element the template-part block's tagName declares,
+// so the wrappers here stay divs. A header group in the part would nest
+// <header> inside <header> on every page.
 function headerPart() {
-  return `<!-- wp:group {"tagName":"header","layout":{"type":"constrained"}} -->
-<header class="wp-block-group">
+  return `<!-- wp:group {"layout":{"type":"constrained"}} -->
+<div class="wp-block-group">
 <!-- wp:group {"layout":{"type":"flex","justifyContent":"space-between"}} -->
 <div class="wp-block-group">
 <!-- wp:site-title /-->
@@ -200,29 +229,60 @@ function headerPart() {
 <!-- wp:navigation {"overlayMenu":"mobile"} /-->
 </div>
 <!-- /wp:group -->
-</header>
+</div>
 <!-- /wp:group -->
 `;
 }
 
-function footerPart(meta) {
-  return `<!-- wp:group {"tagName":"footer","backgroundColor":"dark","textColor":"surface","layout":{"type":"constrained"}} -->
-<footer class="wp-block-group has-surface-color has-dark-background-color has-text-color has-background">
-<!-- wp:paragraph {"style":{"typography":{"textAlign":"center"}},"fontSize":"small"} -->
-<p class="has-text-align-center has-small-font-size">${meta.name}</p>
+/** The preset slugs the footer wants, checked against what the doc defines. */
+function footerPresets(doc) {
+  return {
+    dark: doc.palette.some((entry) => entry.slug === "dark"),
+    surface: doc.palette.some((entry) => entry.slug === "surface"),
+    small: doc.typography.fontSizes.some((entry) => entry.slug === "small")
+  };
+}
+
+// A schema-valid design system may lack the slugs the footer would reference,
+// and a dangling slug fails the repo's own validator. Each reference degrades
+// to plain markup when its preset is missing.
+function footerPart(doc) {
+  const presets = footerPresets(doc);
+
+  const attrs = [];
+  if (presets.dark) attrs.push('"backgroundColor":"dark"');
+  if (presets.surface) attrs.push('"textColor":"surface"');
+  attrs.push('"layout":{"type":"constrained"}');
+
+  const classes = ["wp-block-group"];
+  if (presets.surface) classes.push("has-surface-color");
+  if (presets.dark) classes.push("has-dark-background-color");
+  if (presets.surface) classes.push("has-text-color");
+  if (presets.dark) classes.push("has-background");
+
+  const sizeAttr = presets.small ? ',"fontSize":"small"' : "";
+  const sizeClass = presets.small ? " has-small-font-size" : "";
+
+  return `<!-- wp:group {${attrs.join(",")}} -->
+<div class="${classes.join(" ")}">
+<!-- wp:paragraph {"style":{"typography":{"textAlign":"center"}}${sizeAttr}} -->
+<p class="has-text-align-center${sizeClass}">${htmlEscape(doc.meta.name)}</p>
 <!-- /wp:paragraph -->
-</footer>
+</div>
 <!-- /wp:group -->
 `;
 }
 
-function templatePart(slug, area, textDomain) {
+// No "theme" attribute on purpose. WordPress resolves the part file only when
+// that attribute equals the theme directory name, which nothing here controls,
+// so theme files omit it and core injects the right value at template load.
+function templatePart(slug, area) {
   const tag = area === "uncategorized" ? "div" : area;
-  return `<!-- wp:template-part {"slug":"${slug}","theme":"${textDomain}","tagName":"${tag}","area":"${area}"} /-->`;
+  return `<!-- wp:template-part {"slug":"${slug}","tagName":"${tag}","area":"${area}"} /-->`;
 }
 
-function wrapTemplate(textDomain, main) {
-  return `${templatePart("header", "header", textDomain)}
+function wrapTemplate(main) {
+  return `${templatePart("header", "header")}
 
 <!-- wp:group {"tagName":"main","layout":{"type":"constrained"}} -->
 <main class="wp-block-group">
@@ -230,13 +290,12 @@ ${main}
 </main>
 <!-- /wp:group -->
 
-${templatePart("footer", "footer", textDomain)}
+${templatePart("footer", "footer")}
 `;
 }
 
-function indexTemplate(meta) {
+function indexTemplate() {
   return wrapTemplate(
-    meta.textDomain,
     `<!-- wp:query {"queryId":1,"query":{"perPage":10,"pages":0,"offset":0,"postType":"post","order":"desc","orderBy":"date","author":"","search":"","exclude":[],"sticky":"","inherit":true}} -->
 <div class="wp-block-query">
 <!-- wp:post-template -->
@@ -263,9 +322,8 @@ function indexTemplate(meta) {
   );
 }
 
-function frontPageTemplate(meta) {
+function frontPageTemplate() {
   return wrapTemplate(
-    meta.textDomain,
     `<!-- wp:paragraph -->
 <p>Front page sections are authored as patterns and placed here. Keep every
 section a core block, and register anything that repeats.</p>
@@ -273,18 +331,16 @@ section a core block, and register anything that repeats.</p>
   );
 }
 
-function pageTemplate(meta) {
+function pageTemplate() {
   return wrapTemplate(
-    meta.textDomain,
     `<!-- wp:post-title {"level":1} /-->
 
 <!-- wp:post-content {"layout":{"type":"constrained"}} /-->`
   );
 }
 
-function singleTemplate(meta) {
+function singleTemplate() {
   return wrapTemplate(
-    meta.textDomain,
     `<!-- wp:post-title {"level":1} /-->
 
 <!-- wp:post-date /-->
@@ -320,11 +376,15 @@ House rules that apply to every file here:
 `;
 }
 
-function claudeMd(doc) {
+function claudeMd(doc, paths = {}) {
+  const input = paths.input ?? "design-system.json";
+  const themeJson = paths.themeJson ?? "theme.json";
   const colours = doc.palette.map((c) => `| \`${c.slug}\` | ${c.name} | ${c.color} |`);
   const sizes = doc.typography.fontSizes.map((s) => `| \`${s.slug}\` | ${s.size} |`);
+  // The pipes are escaped because a bare | inside a GFM table cell splits the
+  // cell, code span or not.
   const spacing = doc.spacing.spacingSizes.map(
-    (s) => `| \`${s.slug}\` | ${s.size} | \`var:preset|spacing|${s.slug}\` |`
+    (s) => `| \`${s.slug}\` | ${s.size} | \`var:preset\\|spacing\\|${s.slug}\` |`
   );
 
   return `# ${doc.meta.name}
@@ -338,7 +398,7 @@ starts smarter.
 and regenerate:
 
 \`\`\`sh
-node tools/build-theme-json.mjs --input design-system.json --out theme.json
+node tools/build-theme-json.mjs --input "${input}" --out "${themeJson}"
 \`\`\`
 
 \`--check\` fails if the two have drifted apart.
@@ -373,7 +433,8 @@ Content ${doc.layout.contentSize}, wide ${doc.layout.wideSize}.
 
 ## Registered patterns
 
-None yet. Add a row here whenever one is registered.
+None yet. This file is maintained by hand from stage 5 onward, and each
+registered pattern gets a row here.
 
 ## Lessons
 
@@ -386,9 +447,11 @@ None yet. Add a row here whenever one is registered.
 
 /**
  * @param {object} doc a design-system.json document
+ * @param {{input?: string, themeJson?: string}} [paths] what CLAUDE.md's
+ *   regeneration command names, generic defaults keep the output deterministic
  * @returns {Map<string, string>} relative path to file contents, insertion ordered
  */
-export function scaffoldFiles(doc) {
+export function scaffoldFiles(doc, paths = {}) {
   const meta = doc.meta;
   const files = new Map();
 
@@ -399,14 +462,14 @@ export function scaffoldFiles(doc) {
   files.set("inc/menus.php", menusPhp(meta));
   files.set("inc/cpt.php", cptPhp(meta));
   files.set("parts/header.html", headerPart());
-  files.set("parts/footer.html", footerPart(meta));
-  files.set("templates/index.html", indexTemplate(meta));
-  files.set("templates/front-page.html", frontPageTemplate(meta));
-  files.set("templates/page.html", pageTemplate(meta));
-  files.set("templates/single.html", singleTemplate(meta));
+  files.set("parts/footer.html", footerPart(doc));
+  files.set("templates/index.html", indexTemplate());
+  files.set("templates/front-page.html", frontPageTemplate());
+  files.set("templates/page.html", pageTemplate());
+  files.set("templates/single.html", singleTemplate());
   files.set("patterns/README.md", patternsReadme(meta));
   files.set("assets/.gitkeep", "");
-  files.set("CLAUDE.md", claudeMd(doc));
+  files.set("CLAUDE.md", claudeMd(doc, paths));
 
   return files;
 }
@@ -440,23 +503,48 @@ function main(argv) {
   }
 
   const doc = JSON.parse(readFileSync(args.input, "utf8"));
-  const files = scaffoldFiles(doc);
 
-  for (const [name, contents] of files) {
-    const target = join(args.out, name);
-    mkdirSync(dirname(target), { recursive: true });
-    writeFileSync(target, contents);
+  for (const warning of lintDesignSystem(doc).warnings) {
+    process.stderr.write(`warning: ${warning}\n`);
   }
 
-  process.stdout.write(`wrote ${files.size} files to ${args.out}\n`);
+  const presets = footerPresets(doc);
+  if (!presets.dark) {
+    process.stderr.write('warning: palette has no "dark", the footer part omits its background\n');
+  }
+  if (!presets.surface) {
+    process.stderr.write('warning: palette has no "surface", the footer part omits its text colour\n');
+  }
+  if (!presets.small) {
+    process.stderr.write('warning: font sizes have no "small", the footer part omits its font size\n');
+  }
+
+  const files = scaffoldFiles(doc, {
+    input: args.input,
+    themeJson: `${args.out.replace(/[\\/]+$/, "")}/theme.json`
+  });
+
+  let written = 0;
+  for (const [name, contents] of files) {
+    const target = join(args.out, name);
+    if (SEED_FILES.has(name) && existsSync(target)) {
+      process.stdout.write(`kept ${name} (authored content)\n`);
+      continue;
+    }
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, contents);
+    written += 1;
+  }
+
+  process.stdout.write(`wrote ${written} files to ${args.out}\n`);
   return 0;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
-    process.exit(main(process.argv.slice(2)));
+    process.exitCode = main(process.argv.slice(2));
   } catch (error) {
     process.stderr.write(`${error.message}\n`);
-    process.exit(1);
+    process.exitCode = 1;
   }
 }

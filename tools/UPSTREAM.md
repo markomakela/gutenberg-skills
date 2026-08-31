@@ -14,7 +14,7 @@ style attributes that do not exist in Gutenberg, and missing required classes.
 
 ### Modifications
 
-Two, both mechanical:
+Three, all mechanical:
 
 1. **Renamed `.js` to `.cjs`.** This repo is `"type": "module"`, and the
    upstream file is CommonJS. The extension is the whole fix, the contents are
@@ -26,6 +26,15 @@ Two, both mechanical:
    and turns the first `if` into `if (require.main !== module) { } else if`.
    Executed directly, behaviour is identical. The patch is marked in the file
    with a `VENDOR PATCH` comment.
+
+3. **Lazy, memoized schema loading.** Upstream calls `loadBlockSchemas()` at
+   require time, keyed on `GUTENBERG_DIR`, so two machines could silently run
+   different checks with nothing in the output saying so. The load now happens
+   on the first `validateMarkup` call and is cached, and every
+   `loadBlockSchemas()` call returns the same boolean, which says whether the
+   per-attribute type checks are active. The wrapper surfaces it as a
+   `block schemas:` line in the human report and a `hasSchemas` field in the
+   `--json` payload. This patch is also marked with a `VENDOR PATCH` comment.
 
 House rules are **not** patched into this file. They live in
 `tools/validate-blocks.mjs`, which calls the upstream checks and adds its own.

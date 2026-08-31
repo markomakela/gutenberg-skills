@@ -91,6 +91,20 @@ test("sectionRhythm must reference spacing slugs, not raw sizes", () => {
   assert.equal(validate(doc), false);
 });
 
+test("layout.rootPadding accepts a css length", () => {
+  const doc = withChange((d) => {
+    d.layout.rootPadding = "24px";
+  });
+  assert.equal(validate(doc), true, JSON.stringify(validate.errors, null, 2));
+});
+
+test("layout.rootPadding rejects a bare number, it is a length not a slug", () => {
+  const doc = withChange((d) => {
+    d.layout.rootPadding = "40";
+  });
+  assert.equal(validate(doc), false);
+});
+
 test("schemaVersion is pinned so a later revision is detectable", () => {
   const doc = withChange((d) => {
     d.meta.schemaVersion = 2;

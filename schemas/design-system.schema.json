@@ -249,7 +249,11 @@
       "required": ["contentSize", "wideSize"],
       "properties": {
         "contentSize": { "$ref": "#/$defs/cssLength" },
-        "wideSize": { "$ref": "#/$defs/cssLength" }
+        "wideSize": { "$ref": "#/$defs/cssLength" },
+        "rootPadding": {
+          "description": "Horizontal root padding, the gutter between full width sections' content and the viewport edge. Present turns on useRootPaddingAwareAlignments in the generated theme.json; absent omits both the padding and the flag, because the flag without the padding collapses gutters to zero. A raw length like its siblings, not a spacing slug.",
+          "$ref": "#/$defs/cssLength"
+        }
       }
     }
   }

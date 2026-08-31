@@ -105,6 +105,7 @@
 
   "layout": {
     "contentSize": "720px",
-    "wideSize": "1200px"
+    "wideSize": "1200px",
+    "rootPadding": "24px"
   }
 }

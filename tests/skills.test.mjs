@@ -77,9 +77,11 @@ test("no em or en dashes in anything this repo authors", () => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const full = join(dir, entry.name);
       const rel = full.slice(root.length).replace(/\\/g, "/");
-      if (skip.some((s) => rel.startsWith(s))) continue;
+      // Exact-segment match. A plain startsWith would let ".git" exempt
+      // ".github" and ".gitattributes" too.
+      if (skip.some((s) => rel === s || rel.startsWith(s + "/"))) continue;
       if (entry.isDirectory()) walk(full);
-      else if (/\.(md|mjs|cjs|json|sh|html|php|yml)$/.test(entry.name)) {
+      else if (/\.(md|mjs|cjs|json|sh|html|php|yml|yaml|css|txt)$/.test(entry.name)) {
         const text = readFileSync(full, "utf8");
         if (text.includes(EM_DASH) || text.includes(EN_DASH)) offenders.push(rel);
       }

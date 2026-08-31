@@ -15,8 +15,11 @@ function fixture(name) {
   return readFileSync(new URL(`./fixtures/${name}.html`, import.meta.url), "utf8");
 }
 
-function runCli(args) {
-  return spawnSync(process.execPath, [cliPath, ...args], { encoding: "utf8" });
+function runCli(args, env = {}) {
+  return spawnSync(process.execPath, [cliPath, ...args], {
+    encoding: "utf8",
+    env: { ...process.env, ...env }
+  });
 }
 
 function rulesIn(findings) {
@@ -131,4 +134,98 @@ test("an unknown rule id is refused rather than silently ignored", () => {
   const result = runCli(["--theme", themeDir, "--skip-rule", "no-such-rule"]);
   assert.equal(result.status, 1);
   assert.match(result.stderr, /unknown rule/);
+});
+
+test("a bogus overlayColor is reported against the palette", () => {
+  const markup =
+    '<!-- wp:cover {"overlayColor":"drak","isUserOverlayColor":true} -->\n' +
+    '<div class="wp-block-cover"><div class="wp-block-cover__inner-container"></div></div>\n' +
+    "<!-- /wp:cover -->";
+  const { errors } = validateMarkup(markup, { themeJson });
+  const preset = errors.filter((e) => e.rule === "preset-slugs-exist");
+  assert.equal(preset.length, 1, JSON.stringify(errors));
+  assert.match(preset[0].message, /color preset "drak"/);
+});
+
+test("a custom fontSize length is not mistaken for a preset slug", () => {
+  const markup =
+    '<!-- wp:paragraph {"style":{"typography":{"fontSize":"13px"}}} -->\n' +
+    '<p style="font-size:13px">Pieni teksti</p>\n' +
+    "<!-- /wp:paragraph -->";
+  const result = validateMarkup(markup, { themeJson });
+  assert.deepEqual(result.errors, [], JSON.stringify(result.errors));
+  assert.deepEqual(result.warnings, []);
+});
+
+test("no-dashes catches an em dash inside a block attribute", () => {
+  // The escape keeps the character itself out of this repo's own source.
+  const markup =
+    '<!-- wp:navigation-link {"label":"Palvelut \u2014 hinnat","url":"/palvelut"} /-->';
+  const { errors } = validateMarkup(markup, { themeJson });
+  assert.equal(rulesIn(errors).includes("no-dashes"), true, JSON.stringify(errors));
+});
+
+test("--file with --theme runs the preset check at error level", () => {
+  const path = fileURLToPath(new URL("./fixtures/preset-slugs-exist-fail.html", import.meta.url));
+  const result = runCli(["--file", path, "--theme", themeDir]);
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(result.stdout, /^error.*\[preset-slugs-exist\]/m);
+});
+
+test("--file alone degrades the preset check to a warning", () => {
+  const path = fileURLToPath(new URL("./fixtures/preset-slugs-exist-fail.html", import.meta.url));
+  const result = runCli(["--file", path]);
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /^warn.*\[preset-slugs-exist\]/m);
+});
+
+test("--report without --theme is refused as a parse error", () => {
+  const path = fileURLToPath(new URL("./fixtures/no-raw-hex-pass.html", import.meta.url));
+  const result = runCli(["--file", path, "--report", "somewhere.md"]);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /--report/);
+});
+
+test("--report alongside --file is refused, single-file runs never read it", () => {
+  const path = fileURLToPath(new URL("./fixtures/no-raw-hex-pass.html", import.meta.url));
+  const result = runCli(["--file", path, "--theme", themeDir, "--report", "somewhere.md"]);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /--report/);
+});
+
+test("the missing theme.json warning honours the skip list", () => {
+  const bareThemeDir = fileURLToPath(new URL("./fixtures/bare-theme", import.meta.url));
+
+  const unskipped = validateTheme(bareThemeDir);
+  assert.equal(rulesIn(unskipped.warnings).includes("preset-slugs-exist"), true);
+
+  const skipped = validateTheme(bareThemeDir, ["preset-slugs-exist"]);
+  assert.equal(rulesIn(skipped.warnings).includes("preset-slugs-exist"), false);
+});
+
+test("the buildability report warning honours the skip list", () => {
+  const skipped = validateTheme(themeDir, ["buildability-report"]);
+  assert.equal(rulesIn(skipped.warnings).includes("buildability-report"), false);
+});
+
+test("--skip-rule buildability-report is a known rule id", () => {
+  const result = runCli(["--theme", themeDir, "--skip-rule", "buildability-report"]);
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.equal(result.stdout.includes("buildability-report"), false);
+});
+
+test("validateMarkup reports whether block schemas are active", () => {
+  const result = validateMarkup(fixture("no-raw-hex-pass"), { themeJson });
+  assert.equal(typeof result.hasSchemas, "boolean");
+});
+
+test("the report says when block schemas are not loaded", () => {
+  // A GUTENBERG_DIR that cannot exist makes the outcome machine independent.
+  const env = { GUTENBERG_DIR: fileURLToPath(new URL("./fixtures/no-such-dir", import.meta.url)) };
+
+  const human = runCli(["--theme", themeDir], env);
+  assert.match(human.stdout, /block schemas: not loaded \(set GUTENBERG_DIR\)/);
+
+  const machine = runCli(["--theme", themeDir, "--json"], env);
+  assert.equal(JSON.parse(machine.stdout).hasSchemas, false);
 });
