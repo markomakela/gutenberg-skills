@@ -37,10 +37,17 @@ Do not author serialized markup from this skill alone.
 **If the target is a WooCommerce shop rather than a brochure site, read
 `references/woocommerce-launch.md` before stage 3.** The six stages end when the
 theme validates and activates; that file is what a real catalogue needs after
-that — block behaviour that is invisible in the markup, the caching layers that
+that: block behaviour that is invisible in the markup, the caching layers that
 make correct code look broken, importing a real product feed, taking over a live
 domain, and the verification discipline that keeps one round from becoming five.
 Half of it changes decisions made in the scaffold.
+
+**If an existing site is being replaced rather than a new one built, read
+`references/content-migration.md` after stage 5.** The six stages produce an
+empty theme; that file is how the old site's pages get into it: reading a page
+builder through the REST API, walking its widgets into core blocks, and the
+four things that come out wrong by default. Hand rebuilding a few hundred pages
+is where a migration loses a week.
 
 ## Stage 1: buildability audit
 
@@ -223,12 +230,23 @@ That last line is not optional and no script covers it. The validator checks
 serialization, not WordPress. Markup that validates can still belong to a theme
 that does not activate.
 
-## Stage 7: shop, data and going live
+## Stage 7: existing content
+
+Only when an existing site is being replaced. See
+`references/content-migration.md`: reading the old site through the REST API,
+walking page builder widgets into core blocks, the four conversions that come
+out wrong by default, and importing idempotently with a slug rename map.
+
+Converted markup goes through stage 6 like anything else. Run the validator
+again after the import, not only after authoring.
+
+## Stage 8: shop, data and going live
 
 Only when the target is a WooCommerce shop. See
-`references/woocommerce-launch.md` — WooCommerce block behaviour, caching,
+`references/woocommerce-launch.md`: WooCommerce block behaviour, caching,
 catalogue import, slug parity when replacing a live site, the design faults that
-only appear in production, and a launch checklist.
+only appear in production, the public endpoints WordPress leaves open by
+default, and a launch checklist.
 
 ## What this pipeline does not do
 
