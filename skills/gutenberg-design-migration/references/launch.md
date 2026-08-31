@@ -54,7 +54,7 @@ one batch of three live sites.
 
 ## The mu-plugin and the .htaccess block
 
-`assets/webaula-rest-user-hardening.php` does all of the above and is the file
+`assets/webaula-endpoint-hardening.php` does all of the above and is the file
 as deployed. It goes in `wp-content/mu-plugins/`, where it loads with no
 activation step and cannot be switched off from wp-admin. On its own it is the
 weaker half: pair it with the deny that runs before PHP, at the top of

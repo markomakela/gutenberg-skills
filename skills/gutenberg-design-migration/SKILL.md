@@ -261,7 +261,7 @@ general list.
 Every project, shop or not. See `references/launch.md`: the checklist that
 outlives the theme, and the two endpoints WordPress leaves open to anyone by
 default, which are the findings a security scan returns the week after launch.
-`assets/webaula-rest-user-hardening.php` is the mu-plugin that closes them,
+`assets/webaula-endpoint-hardening.php` is the mu-plugin that closes them,
 and the file explains why it is only half of the fix.
 
 This is not numbered as a stage because it produces no artifact the next stage
