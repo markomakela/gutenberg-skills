@@ -74,9 +74,15 @@ loading `mod_access_compat` honour. On a plain 2.4 the equivalent is
 `Require all denied`.
 
 Verify from the access log, not from the status code, because a 403 looks the
-same either way: `"webroot":"-"` means WordPress never started, and
-`"webroot":"site.wpNNNNN"` means PHP ran for nothing and the deny is sitting in
-the wrong layer. The SEO plugin needs one setting of its own, which no filter
+same whichever layer produced it. The signal is the size and the time. The
+mu-plugin answers with its own short body after booting WordPress; the server
+answers with its own error page and never starts PHP. One host, one request,
+three states: 405 in 154 ms with nothing in place, 403 in 20 ms and 17 bytes
+out with the mu-plugin alone, then 403 in 1.1 ms once the deny was in
+`.htaccess`. Some hosts also blank the `webroot` field when PHP never ran,
+which is the clearest signal where you get it, but do not rely on it: on
+another host the field stayed populated for a request the server had already
+refused. The SEO plugin needs one setting of its own, which no filter
 covers:
 
 ```sh
