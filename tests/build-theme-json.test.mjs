@@ -43,6 +43,18 @@ test("the schema url and version follow meta.wpVersion", () => {
   assert.equal(theme.version, 3);
 });
 
+test("the two scaffolded parts are declared with their areas", () => {
+  // Verified on WordPress 7.1: without this declaration get_block_templates()
+  // reports both parts as area "uncategorized", and the site editor files them
+  // outside Header and Footer. The pages render either way, so nothing else
+  // in the suite would notice this going missing.
+  const parts = buildThemeJson(example).templateParts;
+  assert.deepEqual(parts, [
+    { name: "header", title: "Header", area: "header" },
+    { name: "footer", title: "Footer", area: "footer" }
+  ]);
+});
+
 test("every palette colour reaches settings.color.palette", () => {
   const theme = buildThemeJson(example);
   assert.deepEqual(

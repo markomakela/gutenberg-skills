@@ -123,7 +123,15 @@ export function buildThemeJson(doc) {
     $schema: `https://schemas.wp.org/wp/${doc.meta.wpVersion}/theme.json`,
     version: 3,
     settings,
-    styles: buildStyles(doc, { fontSizes, families, lineHeight })
+    styles: buildStyles(doc, { fontSizes, families, lineHeight }),
+    // scaffold-theme.mjs always writes these two parts, so theme.json always
+    // declares them. Without the declaration WordPress resolves both to
+    // area "uncategorized": the pages render, but the site editor files them
+    // outside Header and Footer, which is not where anyone looks for them.
+    templateParts: [
+      { name: "header", title: "Header", area: "header" },
+      { name: "footer", title: "Footer", area: "footer" }
+    ]
   };
 }
 

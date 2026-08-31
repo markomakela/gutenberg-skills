@@ -20,7 +20,7 @@ npm install
 npm test
 ```
 
-73 tests, no WordPress installation needed. The one check no script covers is
+74 tests, no WordPress installation needed. The one check no script covers is
 activating a generated theme in a real WordPress 7.0 install, which stays
 manual and belongs in the pull request description.
 
