@@ -29,13 +29,26 @@ const PRESET_VAR = {
   spacing: (slug) => `var:preset|spacing|${slug}`
 };
 
+// WordPress runs settings.custom keys through _wp_to_kebab_case before naming
+// the custom property, and that transform splits letter-digit boundaries, so
+// the key "h1" becomes --wp--custom--line-height--h-1. References built here
+// must apply the same transform or they dangle. The keys themselves are
+// emitted untransformed, WordPress kebab-cases those on its own.
+function wpKebab(slug) {
+  return slug
+    .replace(/([a-z])([A-Z])/g, "$1-$2")
+    .replace(/([a-zA-Z])([0-9])/g, "$1-$2")
+    .replace(/([0-9])([a-zA-Z])/g, "$1-$2")
+    .toLowerCase();
+}
+
 // settings.custom values are emitted as plain CSS, so they use the resolved
 // custom property rather than the var:preset| shorthand, which WordPress only
 // expands inside styles.
 const CSS_VAR = {
   color: (slug) => `var(--wp--preset--color--${slug})`,
   spacing: (slug) => `var(--wp--preset--spacing--${slug})`,
-  lineHeight: (slug) => `var(--wp--custom--line-height--${slug})`
+  lineHeight: (slug) => `var(--wp--custom--line-height--${wpKebab(slug)})`
 };
 
 const HEADING_LEVELS = ["h1", "h2", "h3"];
@@ -52,7 +65,7 @@ export function buildThemeJson(doc) {
   const { errors } = lintDesignSystem(doc);
   if (errors.length > 0) {
     throw new Error(
-      `design-system.json has unresolved references:\n  ${errors.join("\n  ")}`
+      `design-system.json fails the design system lint:\n  ${errors.join("\n  ")}`
     );
   }
 
@@ -67,9 +80,43 @@ export function buildThemeJson(doc) {
     if (size.lineHeight !== undefined) lineHeight[size.slug] = size.lineHeight;
   }
 
-  const settings = {
-    appearanceTools: true,
-    useRootPaddingAwareAlignments: true,
+  // Once one size opts in, the global flag turns on and every preset carries
+  // its own fluid key, because WordPress only skips fluidizing a preset on an
+  // explicit false. With no opt-ins both the global flag and the per-size
+  // keys are omitted.
+  const fluid = fontSizes.some((size) => size.fluid === true);
+
+  const typography = { customFontSize: false };
+  if (fluid) typography.fluid = true;
+  typography.defaultFontSizes = false;
+  typography.fontFamilies = families.map((family) => {
+    const out = {
+      slug: family.slug,
+      name: family.name,
+      fontFamily: family.fontFamily
+    };
+    if (family.fontFace) out.fontFace = family.fontFace;
+    return out;
+  });
+  typography.fontSizes = fontSizes.map((size) => {
+    const out = {
+      slug: size.slug,
+      name: size.name,
+      size: size.size
+    };
+    if (fluid) out.fluid = size.fluid === true;
+    return out;
+  });
+
+  const settings = { appearanceTools: true };
+  // The flag makes .has-global-padding reference --wp--style--root--padding-*,
+  // which only exist when styles.spacing.padding is set. Without a declared
+  // root padding the flag would collapse every gutter to zero, so the two are
+  // emitted together or not at all.
+  if (doc.layout.rootPadding !== undefined) {
+    settings.useRootPaddingAwareAlignments = true;
+  }
+  Object.assign(settings, {
     layout: {
       contentSize: doc.layout.contentSize,
       wideSize: doc.layout.wideSize
@@ -89,26 +136,10 @@ export function buildThemeJson(doc) {
         color: entry.color
       }))
     },
-    typography: {
-      customFontSize: false,
-      fluid: fontSizes.some((size) => size.fluid === true),
-      fontFamilies: families.map((family) => {
-        const out = {
-          slug: family.slug,
-          name: family.name,
-          fontFamily: family.fontFamily
-        };
-        if (family.fontFace) out.fontFace = family.fontFace;
-        return out;
-      }),
-      fontSizes: fontSizes.map((size) => ({
-        slug: size.slug,
-        name: size.name,
-        size: size.size
-      }))
-    },
+    typography,
     spacing: {
       customSpacingSize: false,
+      defaultSpacingSizes: false,
       units: ["px", "rem", "%", "vw"],
       spacingSizes: doc.spacing.spacingSizes.map((step) => ({
         slug: step.slug,
@@ -117,7 +148,7 @@ export function buildThemeJson(doc) {
       }))
     },
     custom: buildCustom(doc, lineHeight)
-  };
+  });
 
   return {
     $schema: `https://schemas.wp.org/wp/${doc.meta.wpVersion}/theme.json`,
@@ -186,15 +217,26 @@ function buildStyles(doc, { fontSizes, families, lineHeight }) {
   // which collides with core's has-text-color marker class and overrides every
   // named text colour on the page.
   const inkSlug = doc.palette.some((c) => c.slug === "ink") ? "ink" : "text";
+
+  const spacing = {
+    blockGap: PRESET_VAR.spacing(doc.styles.sectionRhythm.tight)
+  };
+  if (doc.layout.rootPadding !== undefined) {
+    // Only left and right. Vertical rhythm is sectionRhythm's job, and a root
+    // top padding would push the header off the top of the viewport.
+    spacing.padding = {
+      left: doc.layout.rootPadding,
+      right: doc.layout.rootPadding
+    };
+  }
+
   return {
     color: {
       background: PRESET_VAR.color("surface"),
       text: PRESET_VAR.color(inkSlug)
     },
     typography: rootTypography,
-    spacing: {
-      blockGap: PRESET_VAR.spacing(doc.styles.sectionRhythm.tight)
-    },
+    spacing,
     elements
   };
 }
@@ -236,12 +278,13 @@ function buildLink(link) {
 }
 
 /**
- * Always LF, always a trailing newline. The comparison in --check normalises
- * line endings before diffing, because git converts to CRLF on checkout on
- * Windows and a fresh clone would otherwise fail --check on an untouched file.
+ * Always LF, always a trailing newline. JSON.stringify cannot emit CRLF, so
+ * nothing needs normalising here. The read side of --check is what normalises
+ * line endings, because git converts to CRLF on checkout on Windows and a
+ * fresh clone would otherwise fail --check on an untouched file.
  */
 export function serialize(theme) {
-  return JSON.stringify(theme, null, 2).replace(/\r\n/g, "\n") + "\n";
+  return JSON.stringify(theme, null, 2) + "\n";
 }
 
 function parseArgs(argv) {
@@ -300,9 +343,11 @@ function main(argv) {
 // and the CLI silently does nothing while exiting 0.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
-    process.exit(main(process.argv.slice(2)));
+    // exitCode, not exit(): exit() can truncate stdout still buffered in a
+    // POSIX pipe, and there is nothing here that needs to die early.
+    process.exitCode = main(process.argv.slice(2));
   } catch (error) {
     process.stderr.write(`${error.message}\n`);
-    process.exit(1);
+    process.exitCode = 1;
   }
 }

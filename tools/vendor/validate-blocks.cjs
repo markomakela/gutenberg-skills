@@ -15,16 +15,24 @@ const path = require('path');
 
 // --- Block.json schema loading (for attribute type checks) ---
 
-const GUTENBERG_DIR = process.env.GUTENBERG_DIR || '/tmp/gutenberg';
-const BLOCK_LIB_SRC = path.join(GUTENBERG_DIR, 'packages/block-library/src');
-let blockSchemas = {};
+// VENDOR PATCH (WebAula). Upstream reads GUTENBERG_DIR and loads the schemas
+// at require time, so two machines could silently run different checks with
+// nothing in the output saying so. The load is now lazy and memoized: the
+// first validateMarkup call triggers it, and later calls (from any caller)
+// return the same boolean, which reports whether the per-attribute type
+// checks are active. See tools/UPSTREAM.md.
+let blockSchemas = null;
 
 function loadBlockSchemas() {
-  if (!fs.existsSync(BLOCK_LIB_SRC)) return false;
-  const dirs = fs.readdirSync(BLOCK_LIB_SRC, { withFileTypes: true });
+  if (blockSchemas !== null) return Object.keys(blockSchemas).length > 0;
+  blockSchemas = {};
+  const gutenbergDir = process.env.GUTENBERG_DIR || '/tmp/gutenberg';
+  const blockLibSrc = path.join(gutenbergDir, 'packages/block-library/src');
+  if (!fs.existsSync(blockLibSrc)) return false;
+  const dirs = fs.readdirSync(blockLibSrc, { withFileTypes: true });
   for (const d of dirs) {
     if (!d.isDirectory()) continue;
-    const bjPath = path.join(BLOCK_LIB_SRC, d.name, 'block.json');
+    const bjPath = path.join(blockLibSrc, d.name, 'block.json');
     if (!fs.existsSync(bjPath)) continue;
     try {
       const bj = JSON.parse(fs.readFileSync(bjPath, 'utf8'));
@@ -258,6 +266,7 @@ function validateParsedBlock(block, errors, blockIndex, depth = 0) {
 }
 
 function validateMarkup(markup, label) {
+  loadBlockSchemas();
   const parsed = parse(markup);
   const errors = [];
   let blockCount = 0;
@@ -299,16 +308,16 @@ function extractCodeBlocks(markdown) {
 // argument dispatch below and block on stdin. The export lets
 // tools/validate-blocks.mjs call the upstream checks directly instead of
 // shelling out per file, and the guard keeps the CLI behaviour identical when
-// the file is executed. Nothing else in this file is modified.
-// See tools/UPSTREAM.md.
+// the file is executed. The only other modification is the lazy schema load
+// above. See tools/UPSTREAM.md.
 module.exports = { validateMarkup, loadBlockSchemas };
 
 const args = require.main === module ? process.argv.slice(2) : [];
-const hasSchemas = loadBlockSchemas();
 
 if (require.main !== module) {
   // Required as a library. Skip the CLI dispatch.
 } else if (args.includes('--skill')) {
+  const hasSchemas = loadBlockSchemas();
   // Validate all code blocks in SKILL.md
   const pathIdx = args.indexOf('--path');
   const skillPath = pathIdx !== -1 && args[pathIdx + 1]

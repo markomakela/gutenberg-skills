@@ -20,14 +20,19 @@ one batch of three live sites.
   editing. Drop the `/wp/v2/users` routes in `rest_endpoints` when
   `is_user_logged_in()` is false, and leave `/users/me` alone, where an
   unauthenticated request already gets a 401.
-- **That endpoint is one of at least three routes to the same slug.** Closing
-  it alone clears the scan and leaves the leak. The other two on all three
+- **That endpoint is one of four routes to the same slug.** Closing
+  it alone clears the scan and leaves the leak. The next two on all three
   sites were `?author=1`, which `redirect_canonical` turns into
   `/author/<slug>/`, and the SEO plugin's `author-sitemap.xml`, which hands
-  the slug to Google in a file built for crawling. Cancel the author redirect
-  at priority 0, before `redirect_canonical` runs; set Yoast's
-  `disable-author` and flush rewrites; and drop `author_url` from the oEmbed
-  response, which carries the slug as well.
+  the slug to Google in a file built for crawling. The fourth is core's own
+  users sitemap at `/wp-sitemap-users-1.xml`, which serves every author
+  archive URL on any install where no SEO plugin has replaced it. Cancel the
+  author redirect at priority 0, before `redirect_canonical` runs; set
+  Yoast's `disable-author` and flush rewrites; drop `author_url` from the
+  oEmbed response, which carries the slug as well; and remove the `users`
+  provider through `wp_sitemaps_add_provider`. The `/author/<slug>/` archives
+  themselves stay reachable by design, as ordinary public pages; where the
+  SEO plugin is deployed, its `disable-author` setting is what closes them.
 - **`xmlrpc_enabled` does not disable XML-RPC.** The filter only rejects the
   methods that require authentication. `pingback.ping` requires none, so the
   amplification vector stays open and the endpoint still answers.
@@ -54,10 +59,15 @@ one batch of three live sites.
 
 ## The mu-plugin and the .htaccess block
 
-`assets/webaula-endpoint-hardening.php` does all of the above and is the file
-as deployed. It goes in `wp-content/mu-plugins/`, where it loads with no
-activation step and cannot be switched off from wp-admin. On its own it is the
-weaker half: pair it with the deny that runs before PHP, at the top of
+`assets/webaula-endpoint-hardening.php` does all of the above and is the
+deployment source of truth: what runs on a server is this file, byte for
+byte. The current version is 1.3.0. A server still on 1.1.0 is missing the
+core users sitemap removal, the 302 on the author redirect, the generalised
+login error, and the two switches below it; a server on either 1.2.0 has one
+half of that. Diff before deploying and expect the difference, rather than
+reading it as drift. It goes in `wp-content/mu-plugins/`, where it loads with
+no activation step and cannot be switched off from wp-admin. On its own it is
+the weaker half: pair it with the deny that runs before PHP, at the top of
 `.htaccess`, inside its own markers so a plugin that rewrites the file leaves
 it alone.
 
@@ -153,9 +163,11 @@ have to learn too:
 - [ ] Server and local theme trees diffed (`find | sort` both sides): a
       multi-file `scp a b host:dir/` lands every file in one directory, and
       the stray copies are what the next reader edits
-- [ ] Author slug closed on all three routes: `/wp/v2/users`, `?author=1` and
-      the SEO plugin's author sitemap (closing the REST endpoint alone clears
-      the scan and leaves the leak)
+- [ ] Author slug closed on all four routes: `/wp/v2/users`, `?author=1`, the
+      SEO plugin's author sitemap and core's users sitemap (closing the REST
+      endpoint alone clears the scan and leaves the leak; the
+      `/author/<slug>/` archives themselves remain reachable by design, and
+      the SEO plugin's `disable-author` covers them where it is deployed)
 - [ ] `/xmlrpc.php` denied before PHP runs, in `.htaccess` or the WAF
       (`xmlrpc_enabled` leaves `pingback.ping`, and a mu-plugin has booted
       WordPress before it can refuse)

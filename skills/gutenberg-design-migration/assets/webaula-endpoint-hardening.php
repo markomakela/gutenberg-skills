@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: WebAula - REST- ja XML-RPC-suojaus
- * Description: Estaa kayttajatunnusten listaamisen REST API:n users-paatepisteesta, ?author=N-kyselysta ja oEmbed-vastauksesta kirjautumattomilta. Sulkee lisaksi XML-RPC:n kokonaan, yleistaa kirjautumisen virheilmoituksen, poistaa sovellussalasanat ja tiedostoeditorin. Kirjautuneille (lohkoeditori, WooCommerce-nakymat) toiminta sailyy ennallaan.
- * Version: 1.2.0
+ * Description: Estaa kayttajatunnusten listaamisen REST API:n users-paatepisteesta, ?author=N-kyselysta ja oEmbed-vastauksesta kirjautumattomilta seka poistaa ytimen users-sivukartan. Sulkee lisaksi XML-RPC:n kokonaan, yleistaa kirjautumisen virheilmoituksen ja poistaa sovellussalasanat seka tiedostoeditorin. Kirjautuneille (lohkoeditori, WooCommerce-nakymat) toiminta sailyy ennallaan.
+ * Version: 1.3.0
  * Author: WebAula
  */
 
@@ -45,6 +45,9 @@ add_filter(
  * 2) Estetaan ?author=N -uudelleenohjaus, joka paljastaa tunnuksen author-slugina.
  *
  * Prioriteetti 0, jotta tama ajetaan ennen WordPressin omaa redirect_canonicalia.
+ * Ohjaus on 302 (wp_safe_redirectin oletus) eika 301: ehto riippuu
+ * kirjautumistilasta, ja selain tallentaisi 301:n pysyvasti valimuistiin,
+ * jolloin ohjaus jaisi voimaan myos kirjautuneelle.
  */
 add_action(
 	'template_redirect',
@@ -61,7 +64,7 @@ add_action(
 			return;
 		}
 
-		wp_safe_redirect( home_url( '/' ), 301 );
+		wp_safe_redirect( home_url( '/' ) );
 		exit;
 	},
 	0
@@ -80,7 +83,28 @@ add_filter(
 );
 
 /**
- * 4) XML-RPC:n rajapinta, pingbackit ja niihin viittaavat vihjeet pois.
+ * 4) Poistetaan ytimen users-sivukartta, joka listaa author-arkistojen osoitteet.
+ *
+ * WordPressin oma /wp-sitemap-users-1.xml tarjoaa jokaisen kirjoittajan
+ * arkisto-osoitteen eli saman slugin, jonka reitit 1-3 sulkevat. SEO-lisaosa
+ * korvaa ytimen sivukartan siella missa se on kaytossa; tama kattaa
+ * asennukset ilman sita.
+ */
+add_filter(
+	'wp_sitemaps_add_provider',
+	function ( $provider, $name ) {
+		if ( 'users' === $name ) {
+			return false;
+		}
+
+		return $provider;
+	},
+	10,
+	2
+);
+
+/**
+ * 5) XML-RPC:n rajapinta, pingbackit ja niihin viittaavat vihjeet pois.
  *
  * Nama vaikuttavat myos silloin, jos xmlrpc.php ajettaisiin jotain muuta reittia:
  * yhtaan metodia ei ole tarjolla eika sivusto mainosta rajapintaa.
@@ -101,7 +125,7 @@ add_filter(
 remove_action( 'wp_head', 'rsd_link' );
 
 /**
- * 5) Kirjautumisen virheilmoitus ei kerro onko tunnus olemassa.
+ * 6) Kirjautumisen virheilmoitus ei kerro onko tunnus olemassa.
  *
  * WordPress sanoo "Tuntematon kayttajatunnus" vs "Salasana kayttajalle X on
  * vaara", eli lomake vuotaa saman tiedon jonka kohdat 1-3 sulkivat. Suodatin
@@ -131,7 +155,7 @@ add_filter(
 );
 
 /**
- * 6) Sovellussalasanat pois.
+ * 7) Sovellussalasanat pois.
  *
  * Paalla oletuksena WP 5.6:sta lahtien ja ne OHITTAVAT kaksivaiheisen
  * tunnistuksen, joten 2FA:n kayttoonotto ei kata kaikkea niin kauan kuin nama
@@ -140,7 +164,7 @@ add_filter(
 add_filter( 'wp_is_application_passwords_available', '__return_false' );
 
 /**
- * 7) Tiedostoeditori pois wp-administa.
+ * 8) Tiedostoeditori pois wp-administa.
  *
  * Ilman tata kaapattu yllapitajaistunto on suora koodin suoritus eika pelkka
  * sisallon muokkaus. Vakiopaikka on wp-config.php, mutta vakio tarkistetaan

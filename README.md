@@ -97,9 +97,9 @@ All Node, ESM, no build step. Node 20 or newer.
 | Tool | What it does |
 |---|---|
 | `tools/build-theme-json.mjs` | `design-system.json` to `theme.json`, deterministically. `--check` fails when the file on disk is not what the design system generates, which catches hand edits |
-| `tools/scaffold-theme.mjs` | The 15 file theme structure, seeded from the design system, including a `CLAUDE.md` carrying the real preset slugs |
-| `tools/validate-blocks.mjs` | The vendored WordPress parser plus five house rules. `--theme` walks a whole theme, `--json` emits findings a model can act on |
-| `tools/lint-design-system.mjs` | The cross references JSON Schema cannot express, such as a button colour pointing at a palette slug that does not exist |
+| `tools/scaffold-theme.mjs` | The 15 file theme structure, seeded from the design system, including a `CLAUDE.md` carrying the real preset slugs. `--force` rewrites the owned files but keeps `templates/front-page.html` and `CLAUDE.md`, which are seeded once and then authored |
+| `tools/validate-blocks.mjs` | The vendored WordPress parser plus five house rules. `--theme` walks a whole theme, `--file` checks a single file (alone, or with `--theme` to resolve preset slugs), `--json` emits findings a model can act on |
+| `tools/lint-design-system.mjs` | The cross references JSON Schema cannot express, such as a button colour pointing at a palette slug that does not exist. Also a CLI: `node tools/lint-design-system.mjs design-system.json` exits 1 on errors |
 | `schemas/design-system.schema.json` | The contract. Rejects raw hex anywhere a preset slug belongs |
 
 ### House rules with a machine check
@@ -109,11 +109,12 @@ All Node, ESM, no build step. Node 20 or newer.
 | `no-raw-hex` | error | a hex value in block attributes or an inline style |
 | `preset-slugs-exist` | error | a preset slug theme.json does not define |
 | `no-absolute-position` | error | `position: absolute` or `fixed` |
-| `no-dashes` | error | an em dash or en dash in copy |
+| `no-dashes` | error | an em dash or en dash anywhere in the markup, attributes and delimiters included |
 | `soft-hyphen-hint` | warn | a long Finnish or Swedish compound in a heading or button with no `&shy;` |
 
 Each has an id that `--skip-rule` accepts, so a project can disable one without
-forking the tool.
+forking the tool. The missing buildability report warning is skippable the same
+way, as `--skip-rule buildability-report`.
 
 ## Install for Claude Code
 
@@ -170,7 +171,7 @@ The repo vendors from the same upstream in two places, pinned independently:
 | `skills/gutenberg-block-authoring/` | `gutenberg-content/` | WordPress 7.0 snapshot |
 | `tools/vendor/validate-blocks.cjs` | `validate-blocks.js` | commit `62c8a6c8` |
 
-Details, the two mechanical modifications to the validator, and how to enable
+Details, the three mechanical modifications to the validator, and how to enable
 its optional per-attribute type checks are in `tools/UPSTREAM.md`.
 
 License for both: MIT, Copyright (c) 2026 Ross Mulcahy. The licence text is

@@ -98,6 +98,68 @@ test("section rhythm resolves spacing slugs to preset variables", () => {
   assert.equal(rhythm.loose, "var(--wp--preset--spacing--60)");
 });
 
+test("heading line-height references kebab-case digits the way WordPress does", () => {
+  // WordPress runs settings.custom keys through _wp_to_kebab_case, which
+  // splits letter-digit boundaries, so the property for the "h1" key is
+  // --wp--custom--line-height--h-1. A reference built from the raw slug
+  // dangles and every heading falls back to inherited line height.
+  const theme = buildThemeJson(example);
+  assert.equal(
+    theme.styles.elements.h1.typography.lineHeight,
+    "var(--wp--custom--line-height--h-1)"
+  );
+  assert.equal(
+    theme.styles.typography.lineHeight,
+    "var(--wp--custom--line-height--body)"
+  );
+  // The keys themselves stay raw, WordPress kebab-cases those on its own.
+  assert.equal(theme.settings.custom.lineHeight.h1, "1.15");
+});
+
+test("one fluid size turns the global flag on and flags every preset", () => {
+  // Only "display" opts in. WordPress fluidizes every preset unless it
+  // carries an explicit fluid: false, so the non-fluid sizes need one.
+  const theme = buildThemeJson(example);
+  assert.equal(theme.settings.typography.fluid, true);
+  for (const size of theme.settings.typography.fontSizes) {
+    assert.equal(size.fluid, size.slug === "display", size.slug);
+  }
+});
+
+test("a design with no fluid sizes carries no fluid flags at all", () => {
+  const theme = buildThemeJson(
+    withChange((d) => {
+      for (const size of d.typography.fontSizes) delete size.fluid;
+    })
+  );
+  assert.equal("fluid" in theme.settings.typography, false);
+  for (const size of theme.settings.typography.fontSizes) {
+    assert.equal("fluid" in size, false, size.slug);
+  }
+});
+
+test("version 3 default presets are suppressed explicitly", () => {
+  // theme.json version 3 no longer hides the WordPress default presets just
+  // because the theme declares its own, each list needs its own flag.
+  const settings = buildThemeJson(example).settings;
+  assert.equal(settings.typography.defaultFontSizes, false);
+  assert.equal(settings.spacing.defaultSpacingSizes, false);
+});
+
+test("layout.rootPadding emits the padding and the awareness flag together", () => {
+  const theme = buildThemeJson(withChange((d) => (d.layout.rootPadding = "24px")));
+  assert.equal(theme.settings.useRootPaddingAwareAlignments, true);
+  assert.deepEqual(theme.styles.spacing.padding, { left: "24px", right: "24px" });
+});
+
+test("without rootPadding neither the padding nor the flag appears", () => {
+  // The flag alone makes .has-global-padding reference undeclared
+  // --wp--style--root--padding-* variables and gutters collapse to zero.
+  const theme = buildThemeJson(withChange((d) => delete d.layout.rootPadding));
+  assert.equal("useRootPaddingAwareAlignments" in theme.settings, false);
+  assert.equal("padding" in theme.styles.spacing, false);
+});
+
 test("an absent optional element produces no empty branch", () => {
   const theme = buildThemeJson(withChange((d) => delete d.elements.link));
   assert.equal("link" in theme.styles.elements, false);

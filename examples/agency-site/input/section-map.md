@@ -29,4 +29,6 @@ always arrives.
 `Verkkosivustot` and `Verkkokaupat` are long enough to wrap badly in an `h3` at
 the mobile breakpoint. Both carry a manual `&shy;` at the compound boundary:
 `Verkko&shy;sivustot`, `Verkko&shy;kaupat`. The validator's `soft-hyphen-hint`
-rule flags candidates, but the break point is a judgement call, not a rule.
+rule only flags words of 15 letters or more, and at 14 and 12 letters these two
+sit under that floor, so the hyphens here were placed by judgement during
+stage 5, not prompted by the rule.

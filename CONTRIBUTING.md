@@ -3,8 +3,10 @@
 ## House rules
 
 These apply to everything in the repo, including its own prose and code
-comments. `tests/skills.test.mjs` enforces the dash rule across every file the
-repo authors.
+comments. `tests/skills.test.mjs` enforces the dash rule on authored text and
+code files by extension (md, mjs, cjs, json, sh, html, php, yml, yaml, css,
+txt), with the generated zip packages in `dist/`, the vendored upstream
+sources and the deliberately failing fixtures in `tests/fixtures/` excluded.
 
 - No em dashes or en dashes. Use commas, periods, or restructure.
 - 24-hour time. 14:00, not 2 PM.
@@ -20,7 +22,7 @@ npm install
 npm test
 ```
 
-74 tests, no WordPress installation needed. The one check no script covers is
+105 tests, no WordPress installation needed. The one check no script covers is
 activating a generated theme in a real WordPress 7.0 install, which stays
 manual and belongs in the pull request description.
 
@@ -60,8 +62,9 @@ the result:
 node tools/scaffold-theme.mjs --input examples/agency-site/input/design-system.json --out examples/agency-site/expected/theme --force
 ```
 
-Then re-apply the authored sections if the scaffold overwrote them. The list of
-files stage 5 owns is in `tests/scaffold-theme.test.mjs`.
+The scaffold treats `templates/front-page.html` and `CLAUDE.md` as seed files
+and keeps the existing ones even with `--force`, so authored content in them
+survives regeneration.
 
 ## Regenerating dist
 

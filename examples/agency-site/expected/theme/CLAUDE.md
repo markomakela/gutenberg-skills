@@ -9,7 +9,7 @@ starts smarter.
 and regenerate:
 
 ```sh
-node tools/build-theme-json.mjs --input design-system.json --out theme.json
+node tools/build-theme-json.mjs --input "examples/agency-site/input/design-system.json" --out "examples/agency-site/expected/theme/theme.json" --check
 ```
 
 `--check` fails if the two have drifted apart.
@@ -43,23 +43,30 @@ section surface. Alternate `surface` and `neutral` for section backgrounds.
 
 | Slug | Size | Reference |
 |---|---|---|
-| `10` | 8px | `var:preset|spacing|10` |
-| `20` | 16px | `var:preset|spacing|20` |
-| `30` | 24px | `var:preset|spacing|30` |
-| `40` | 40px | `var:preset|spacing|40` |
-| `50` | 64px | `var:preset|spacing|50` |
-| `60` | 96px | `var:preset|spacing|60` |
+| `10` | 8px | `var:preset\|spacing\|10` |
+| `20` | 16px | `var:preset\|spacing\|20` |
+| `30` | 24px | `var:preset\|spacing\|30` |
+| `40` | 40px | `var:preset\|spacing\|40` |
+| `50` | 64px | `var:preset\|spacing\|50` |
+| `60` | 96px | `var:preset\|spacing\|60` |
 
 Section rhythm: default `50`, tight
 `40`, loose `60`.
 
 ## Layout
 
-Content 720px, wide 1200px.
+Content 720px, wide 1200px. Root padding 24px on each side, with root padding
+aware alignments, so full width sections keep their gutters.
 
 ## Registered patterns
 
-None yet. Add a row here whenever one is registered.
+| Slug | Title |
+|---|---|
+| `agency-site/hero` | Hero |
+| `agency-site/services-grid` | Services grid |
+| `agency-site/about-media-text` | About, media beside text |
+| `agency-site/cta-band` | CTA band |
+| `agency-site/faq` | FAQ |
 
 ## Lessons
 

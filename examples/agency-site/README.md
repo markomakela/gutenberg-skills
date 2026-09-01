@@ -53,8 +53,10 @@ have a machine check: preset slugs instead of hex, no absolute positioning, no
 em or en dashes, and manual `&shy;` in long Finnish compounds.
 
 The copy is Finnish and stays Finnish. `Verkko&shy;sivustot` and
-`Verkko&shy;kaupat` carry their soft hyphens, which is the rule the example
-exists to demonstrate rather than describe.
+`Verkko&shy;kaupat` carry their soft hyphens, placed by judgement at the
+compound boundary: both sit under the `soft-hyphen-hint` rule's 15 letter
+floor, which is why the house rule is demonstrated here rather than merely
+described.
 
 ## What it does not prove
 
