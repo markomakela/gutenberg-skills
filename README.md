@@ -106,6 +106,7 @@ All Node, ESM, no build step. Node 20 or newer.
 
 | Rule | Level | Fails on |
 |---|---|---|
+| `class-not-supported` | error | a `className` on a block whose schema sets `supports.className` to false |
 | `no-raw-hex` | error | a hex value in block attributes or an inline style |
 | `preset-slugs-exist` | error | a preset slug theme.json does not define |
 | `no-absolute-position` | error | `position: absolute` or `fixed` |

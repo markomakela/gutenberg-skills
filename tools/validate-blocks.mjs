@@ -36,6 +36,7 @@ const INLINE_STYLE = /style="([^"]*)"/g;
 const HEX = /#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?(?:[0-9a-fA-F]{2})?\b/g;
 
 export const RULES = [
+  "class-not-supported",
   "no-raw-hex",
   "preset-slugs-exist",
   "no-absolute-position",
@@ -46,6 +47,90 @@ export const RULES = [
 function stripPhpHeader(source) {
   const end = source.indexOf("?>");
   return end === -1 ? source : source.slice(end + 2);
+}
+
+/**
+ * Blocks whose schema says supports.className is false.
+ *
+ * The reference ships with gutenberg-block-authoring, which is where the
+ * attribute schemas already live. Reading it here is what turns a rule the
+ * skill states in prose into one the pipeline enforces: markup that gives
+ * core/paragraph a className parses fine offline and is refused by the editor,
+ * which is the "Attempt Block Recovery" this repo exists to prevent.
+ */
+const BLOCK_REFERENCE = new URL(
+  "../skills/gutenberg-block-authoring/block-reference.json",
+  import.meta.url
+);
+
+let classNameForbidden = null;
+
+function forbiddenClassNameBlocks() {
+  if (classNameForbidden !== null) return classNameForbidden;
+
+  classNameForbidden = new Set();
+
+  try {
+    const reference = JSON.parse(readFileSync(BLOCK_REFERENCE, "utf8"));
+    for (const [name, block] of Object.entries(reference.blocks ?? {})) {
+      if (block?.supports?.className === false) classNameForbidden.add(name);
+    }
+  } catch {
+    // Left empty on purpose. The rule reports the miss once, below, rather
+    // than throwing and taking every other rule down with it.
+  }
+
+  return classNameForbidden;
+}
+
+/** `wp:paragraph` is core/paragraph. Anything namespaced is already whole. */
+function qualify(name) {
+  return name.includes("/") ? name : `core/${name}`;
+}
+
+function countBlocks(markup) {
+  return (markup.match(/<!--\s+wp:/g) ?? []).length;
+}
+
+const OPENING_DELIMITER = /<!--\s+wp:([a-z0-9-]+(?:\/[a-z0-9-]+)?)\s+(\{[^]*?\})\s*\/?-->/g;
+
+function ruleClassNotSupported(markup) {
+  const forbidden = forbiddenClassNameBlocks();
+
+  if (forbidden.size === 0) {
+    return [
+      {
+        rule: "class-not-supported",
+        level: "warn",
+        message:
+          "block-reference.json could not be read, so className support was not checked."
+      }
+    ];
+  }
+
+  const out = [];
+
+  for (const [, name, payload] of markup.matchAll(OPENING_DELIMITER)) {
+    const block = qualify(name);
+    if (!forbidden.has(block)) continue;
+
+    let attributes;
+    try {
+      attributes = JSON.parse(payload);
+    } catch {
+      continue; // Malformed JSON is the upstream parser's finding, not this one.
+    }
+
+    if (typeof attributes.className !== "string" || attributes.className.trim() === "") continue;
+
+    out.push({
+      rule: "class-not-supported",
+      level: "error",
+      message: `${block} carries className "${attributes.className}" but its schema sets supports.className to false. The editor refuses this block. Move the class to a wrapping Group, or target the block from the parent in CSS.`
+    });
+  }
+
+  return out;
 }
 
 function ruleNoRawHex(markup) {
@@ -232,6 +317,7 @@ export function validateMarkup(markup, options = {}) {
   }
 
   const houseRules = {
+    "class-not-supported": () => ruleClassNotSupported(markup),
     "no-raw-hex": () => ruleNoRawHex(markup),
     "preset-slugs-exist": () => rulePresetSlugsExist(markup, themeJson),
     "no-absolute-position": () => ruleNoAbsolutePosition(markup),
@@ -249,6 +335,7 @@ export function validateMarkup(markup, options = {}) {
   return {
     errors: findings.filter((f) => f.level === "error"),
     warnings: findings.filter((f) => f.level === "warn"),
+    blockCount: countBlocks(markup),
     hasSchemas: upstream.loadBlockSchemas()
   };
 }
@@ -306,6 +393,8 @@ export function validateTheme(themeDir, skip = [], reportPath = null) {
   }
 
   const files = markupFiles(themeDir);
+  let blockCount = 0;
+
   for (const file of files) {
     const raw = readFileSync(file, "utf8");
     const markup = extname(file) === ".php" ? stripPhpHeader(raw) : raw;
@@ -313,9 +402,16 @@ export function validateTheme(themeDir, skip = [], reportPath = null) {
     const result = validateMarkup(markup, { label, themeJson, skip });
     errors.push(...result.errors);
     warnings.push(...result.warnings);
+    blockCount += result.blockCount;
   }
 
-  return { errors, warnings, fileCount: files.length, hasSchemas: upstream.loadBlockSchemas() };
+  return {
+    errors,
+    warnings,
+    fileCount: files.length,
+    blockCount,
+    hasSchemas: upstream.loadBlockSchemas()
+  };
 }
 
 function parseArgs(argv) {
@@ -364,6 +460,15 @@ function report(result, json) {
   for (const finding of result.warnings) {
     process.stdout.write(`warn   ${finding.file}  [${finding.rule}] ${finding.message}\n`);
   }
+
+  // Printed before the verdict: a run that matched no files, or files with no
+  // blocks in them, otherwise reports PASSED exactly like a real one.
+  const scope =
+    result.fileCount === undefined
+      ? `${result.blockCount} blocks`
+      : `${result.fileCount} files, ${result.blockCount} blocks`;
+  process.stdout.write(`checked: ${scope}
+`);
 
   const summary = `${result.errors.length} errors, ${result.warnings.length} warnings`;
   process.stdout.write(result.errors.length === 0 ? `PASSED: ${summary}\n` : `FAILED: ${summary}\n`);
