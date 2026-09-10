@@ -20,6 +20,28 @@ jobs:
       - run: npm ci
       - run: npm test
 
+  php:
+    # The repo ships one PHP asset and every scaffolded theme carries four
+    # generated PHP files. Neither was checked by anything before this.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: php -l on everything this repo ships
+        run: |
+          find skills examples tools -name '*.php' -not -path '*/vendor/*' -print0 \
+            | xargs -0 -r -n1 php -l
+
+      - name: php -l on a freshly scaffolded theme
+        run: |
+          node tools/scaffold-theme.mjs \
+            --input examples/agency-site/input/design-system.json \
+            --out /tmp/php-check
+          find /tmp/php-check -name '*.php' -print0 | xargs -0 -r -n1 php -l
+
   pipeline:
     # The example is the regression surface: regenerate it from its inputs and
     # prove nothing drifted. A fresh checkout is also the only place the CRLF
