@@ -133,9 +133,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * style.css is registered so WordPress recognises the theme, not because it
- * carries styles. Add a versioned file here only when a rule genuinely cannot
- * be expressed in theme.json.
+ * The style.css file is registered so WordPress recognises the theme, not
+ * because it carries styles. Add a versioned file here only when a rule
+ * genuinely cannot be expressed in theme.json.
  */
 function ${prefix}_enqueue_assets() {
 	wp_enqueue_style(
@@ -361,6 +361,8 @@ pattern file needs this header and nothing else:
  * Title: Hero
  * Slug: ${meta.textDomain}/hero
  * Categories: ${meta.textDomain}
+ *
+ * @package ${meta.textDomain}
  */
 ?>
 <!-- wp:cover ... -->

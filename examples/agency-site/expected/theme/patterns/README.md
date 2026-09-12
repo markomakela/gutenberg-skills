@@ -9,6 +9,8 @@ pattern file needs this header and nothing else:
  * Title: Hero
  * Slug: agency-site/hero
  * Categories: agency-site
+ *
+ * @package agency-site
  */
 ?>
 <!-- wp:cover ... -->
