@@ -2,8 +2,10 @@
 /**
  * Plugin Name: WebAula - REST- ja XML-RPC-suojaus
  * Description: Estaa kayttajatunnusten listaamisen REST API:n users-paatepisteesta, ?author=N-kyselysta ja oEmbed-vastauksesta kirjautumattomilta seka poistaa ytimen users-sivukartan. Sulkee lisaksi XML-RPC:n kokonaan, yleistaa kirjautumisen virheilmoituksen ja poistaa sovellussalasanat seka tiedostoeditorin. Kirjautuneille (lohkoeditori, WooCommerce-nakymat) toiminta sailyy ennallaan.
- * Version: 1.3.0
+ * Version: 1.3.1
  * Author: WebAula
+ *
+ * @package webaula-endpoint-hardening
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -14,7 +16,10 @@ defined( 'ABSPATH' ) || exit;
  * Ensisijainen esto on .htaccessissa (Files xmlrpc.php), jolloin PHP:ta ei ajeta
  * lainkaan. Tama on varmistus sen varalle etta .htaccess korvautuu.
  */
-if ( isset( $_SERVER['SCRIPT_FILENAME'] ) && 'xmlrpc.php' === basename( $_SERVER['SCRIPT_FILENAME'] ) ) {
+if (
+	isset( $_SERVER['SCRIPT_FILENAME'] )
+	&& 'xmlrpc.php' === basename( sanitize_text_field( wp_unslash( $_SERVER['SCRIPT_FILENAME'] ) ) )
+) {
 	header( 'HTTP/1.1 403 Forbidden' );
 	header( 'Content-Type: text/plain; charset=utf-8' );
 	exit( 'XML-RPC disabled.' );
@@ -60,7 +65,7 @@ add_action(
 			return;
 		}
 
-		if ( ! is_numeric( wp_unslash( $_GET['author'] ) ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( ! is_numeric( sanitize_text_field( wp_unslash( $_GET['author'] ) ) ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			return;
 		}
 
