@@ -49,10 +49,11 @@ jobs:
       - name: WordPress Coding Standards
         run: |
           mkdir -p /tmp/phpcs
+          composer -d /tmp/phpcs init --no-interaction --name=webaula/phpcs
           composer -d /tmp/phpcs config --no-interaction \
             allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
-          composer -d /tmp/phpcs require --no-interaction --quiet \
-            squizlabs/php_codesniffer:^3.9 wp-coding-standards/wpcs:^3.1
+          composer -d /tmp/phpcs require --no-interaction --quiet --dev \
+            "squizlabs/php_codesniffer:^3.9" "wp-coding-standards/wpcs:^3.1"
           /tmp/phpcs/vendor/bin/phpcs
 
       - name: the standard also passes on a freshly scaffolded theme
