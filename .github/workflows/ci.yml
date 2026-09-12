@@ -42,6 +42,22 @@ jobs:
             --out /tmp/php-check
           find /tmp/php-check -name '*.php' -print0 | xargs -0 -r -n1 php -l
 
+      # php -l is syntax. This is the standard the code claims to follow.
+      # Installed outside the repo on purpose: npm is the only dependency
+      # manager a contributor needs to set up, and phpcs.xml.dist carries the
+      # configuration either way.
+      - name: WordPress Coding Standards
+        run: |
+          mkdir -p /tmp/phpcs
+          composer -d /tmp/phpcs config --no-interaction \
+            allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
+          composer -d /tmp/phpcs require --no-interaction --quiet \
+            squizlabs/php_codesniffer:^3.9 wp-coding-standards/wpcs:^3.1
+          /tmp/phpcs/vendor/bin/phpcs
+
+      - name: the standard also passes on a freshly scaffolded theme
+        run: /tmp/phpcs/vendor/bin/phpcs --standard=WordPress --extensions=php -p /tmp/php-check
+
   pipeline:
     # The example is the regression surface: regenerate it from its inputs and
     # prove nothing drifted. A fresh checkout is also the only place the CRLF
