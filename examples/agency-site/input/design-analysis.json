@@ -1,0 +1,284 @@
+{
+  "source": "design.html",
+  "tokens": {
+    "custom": {
+      "--primary": {
+        "value": "#1f5f4b",
+        "kind": "color"
+      },
+      "--dark": {
+        "value": "#12261f",
+        "kind": "color"
+      },
+      "--surface": {
+        "value": "#ffffff",
+        "kind": "color"
+      },
+      "--neutral": {
+        "value": "#f4f4f1",
+        "kind": "color"
+      },
+      "--text": {
+        "value": "#1b1b1b",
+        "kind": "color"
+      },
+      "--muted": {
+        "value": "#5c625f",
+        "kind": "color"
+      },
+      "--content": {
+        "value": "720px",
+        "kind": "length"
+      },
+      "--wide": {
+        "value": "1200px",
+        "kind": "length"
+      },
+      "--radius": {
+        "value": "8px",
+        "kind": "length"
+      }
+    },
+    "hexOutsideRoot": []
+  },
+  "regions": [
+    {
+      "order": 0,
+      "name": "header",
+      "tag": "header",
+      "id": null,
+      "classes": [
+        "section",
+        "wrap"
+      ],
+      "declared": "header. Maps to a Template Part (header), site title plus Navigation block.",
+      "signals": {
+        "columns": 1,
+        "background": null,
+        "textAlign": null,
+        "headingLevel": null,
+        "buttons": 0,
+        "hasMedia": false,
+        "details": 0,
+        "repeatedChildren": 0,
+        "inlineStyle": true
+      },
+      "content": {
+        "headings": [],
+        "paragraphs": 0
+      }
+    },
+    {
+      "order": 1,
+      "name": "hero",
+      "tag": "section",
+      "id": null,
+      "classes": [
+        "section",
+        "hero"
+      ],
+      "declared": "hero. Maps to Cover, alignfull, solid dark overlay. No image, no overlap.",
+      "signals": {
+        "columns": 1,
+        "background": "var(--dark)",
+        "textAlign": "left",
+        "headingLevel": 1,
+        "buttons": 1,
+        "hasMedia": false,
+        "details": 0,
+        "repeatedChildren": 0,
+        "inlineStyle": false
+      },
+      "content": {
+        "headings": [
+          "Rakennamme verkkopalvelut jotka kestavat"
+        ],
+        "paragraphs": 1
+      }
+    },
+    {
+      "order": 2,
+      "name": "palvelut",
+      "tag": "section",
+      "id": "palvelut",
+      "classes": [
+        "section",
+        "services"
+      ],
+      "declared": "services. Maps to Group (alignfull, neutral) containing Columns with three cards. Each card is a Group. The card repeats, so it becomes a registered Pattern.",
+      "signals": {
+        "columns": 3,
+        "background": "var(--neutral)",
+        "textAlign": null,
+        "headingLevel": 2,
+        "buttons": 0,
+        "hasMedia": false,
+        "details": 0,
+        "repeatedChildren": 3,
+        "inlineStyle": false
+      },
+      "content": {
+        "headings": [
+          "Palvelut",
+          "Verkkosivustot",
+          "Verkkokaupat",
+          "Yllapito"
+        ],
+        "paragraphs": 3
+      }
+    },
+    {
+      "order": 3,
+      "name": "meista",
+      "tag": "section",
+      "id": "meista",
+      "classes": [
+        "section"
+      ],
+      "declared": "about. Maps to Media & Text, media on the right, stacks on mobile.",
+      "signals": {
+        "columns": 2,
+        "background": null,
+        "textAlign": null,
+        "headingLevel": 2,
+        "buttons": 0,
+        "hasMedia": true,
+        "details": 0,
+        "repeatedChildren": 0,
+        "inlineStyle": false
+      },
+      "content": {
+        "headings": [
+          "Kuka meita johtaa"
+        ],
+        "paragraphs": 1
+      }
+    },
+    {
+      "order": 4,
+      "name": "yhteys",
+      "tag": "section",
+      "id": "yhteys",
+      "classes": [
+        "section",
+        "cta"
+      ],
+      "declared": "cta. Maps to Group (alignfull, primary) with centered heading and Buttons. This is the single band where the brand colour is used as a surface.",
+      "signals": {
+        "columns": 1,
+        "background": "var(--primary)",
+        "textAlign": "center",
+        "headingLevel": 2,
+        "buttons": 1,
+        "hasMedia": false,
+        "details": 0,
+        "repeatedChildren": 0,
+        "inlineStyle": false
+      },
+      "content": {
+        "headings": [
+          "Aloitetaan pienesta"
+        ],
+        "paragraphs": 1
+      }
+    },
+    {
+      "order": 5,
+      "name": "usein",
+      "tag": "section",
+      "id": "usein",
+      "classes": [
+        "section",
+        "faq"
+      ],
+      "declared": "faq. Maps to Details blocks, one per question.",
+      "signals": {
+        "columns": 1,
+        "background": null,
+        "textAlign": null,
+        "headingLevel": 2,
+        "buttons": 0,
+        "hasMedia": false,
+        "details": 3,
+        "repeatedChildren": 3,
+        "inlineStyle": false
+      },
+      "content": {
+        "headings": [
+          "Usein kysyttya"
+        ],
+        "paragraphs": 3
+      }
+    },
+    {
+      "order": 6,
+      "name": "blog teaser",
+      "tag": "section",
+      "id": null,
+      "classes": [
+        "section"
+      ],
+      "declared": "blog teaser. Maps to Query Loop, three posts, grid layout.",
+      "signals": {
+        "columns": 3,
+        "background": null,
+        "textAlign": null,
+        "headingLevel": 2,
+        "buttons": 0,
+        "hasMedia": false,
+        "details": 0,
+        "repeatedChildren": 3,
+        "inlineStyle": false
+      },
+      "content": {
+        "headings": [
+          "Viimeisimmat kirjoitukset",
+          "Otsikko yksi",
+          "Otsikko kaksi",
+          "Otsikko kolme"
+        ],
+        "paragraphs": 3
+      }
+    },
+    {
+      "order": 7,
+      "name": "footer",
+      "tag": "footer",
+      "id": null,
+      "classes": [],
+      "declared": "footer. Maps to a Template Part (footer).",
+      "signals": {
+        "columns": 1,
+        "background": "var(--dark)",
+        "textAlign": "center",
+        "headingLevel": null,
+        "buttons": 0,
+        "hasMedia": false,
+        "details": 0,
+        "repeatedChildren": 0,
+        "inlineStyle": false
+      },
+      "content": {
+        "headings": [],
+        "paragraphs": 0
+      }
+    }
+  ],
+  "flags": [
+    {
+      "rule": "inline-style",
+      "region": "header",
+      "message": "Layout in an inline style. Express it through block attributes or theme.json, or record it as an accepted cost."
+    },
+    {
+      "rule": "css-grid-fixed-columns",
+      "region": "palvelut",
+      "message": "A 3 track grid. The Columns block stacks at the mobile breakpoint and CSS grid as written does not, so the design has to accept the stack."
+    },
+    {
+      "rule": "css-grid-fixed-columns",
+      "region": "blog teaser",
+      "message": "A 3 track grid. The Columns block stacks at the mobile breakpoint and CSS grid as written does not, so the design has to accept the stack."
+    }
+  ]
+}

@@ -33,6 +33,13 @@ jobs:
           cache: npm
       - run: npm ci
 
+      - name: the design analysis matches its HTML reference
+        run: |
+          node tools/analyze-design.mjs \
+            --input examples/agency-site/input/design.html \
+            --out examples/agency-site/input/design-analysis.json \
+            --check
+
       - name: theme.json matches its design system
         run: |
           node tools/build-theme-json.mjs \
