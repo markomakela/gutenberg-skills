@@ -278,7 +278,9 @@ Every project, shop or not. See `references/launch.md`: the checklist that
 outlives the theme, and the two endpoints WordPress leaves open to anyone by
 default, which are the findings a security scan returns the week after launch.
 `assets/webaula-endpoint-hardening.php` is the mu-plugin that closes them,
-and the file explains why it is only half of the fix.
+and the file explains why it is only half of the fix. The same reference
+covers what to do when the front door fails, which is server configuration
+rather than anything a theme or a mu-plugin can carry.
 
 This is not numbered as a stage because it produces no artifact the next stage
 consumes. It is the last thing done, and skipping it is invisible until

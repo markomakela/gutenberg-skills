@@ -154,6 +154,64 @@ have to learn too:
   above. A second factor is only as good as the routes that cannot go around
   it.
 
+## When the front door fails
+
+Everything above keeps someone out. These three keep the damage small once
+something gets in, which is the half of hardening that a scanner report never
+asks about. None of them belongs in the mu-plugin: they are server settings,
+and a PHP file is the wrong place to hold them.
+
+- **Deny PHP execution in the writable directories, and only those.**
+  `wp-content/uploads` is where an upload bug lands a shell, and a cache
+  directory is the other writable tree. The tempting rule is `*.php` under the
+  whole of `wp-content`, and it breaks sites: some themes link PHP files from
+  `/themes/` and address them directly. A block theme never does, which is why
+  the theme line in the checklist is safe here and would not be on a classic
+  theme. Verify the rule by making the request, not by reading it back.
+  LiteSpeed does not treat `.htaccess` the way Apache does, and OpenLiteSpeed
+  may ignore it entirely, so the rule that works on one host is not evidence
+  about the next one.
+- **`disable_functions` is depth, not a sandbox.** `exec`, `passthru`,
+  `shell_exec`, `system`, `proc_open` and `popen`, set through cPanel's
+  MultiPHP INI editor or a `.user.ini`, so no root is needed. The last two
+  matter most: without them a dropped file cannot spawn the process that keeps
+  it alive, which is the gap that firewalling the web server's outbound
+  traffic alone leaves open. Check the backup plugin before setting it,
+  because several shell out to `mysqldump`. While in there, confirm
+  `open_basedir` holds the account, so a file written to `/tmp` is not
+  readable from the site.
+- **Close outbound traffic only after observing it.** This is the containment
+  that actually defeats a command and control callback, and on a machine we do
+  not own the proxy and firewall version of it is unavailable. WordPress has a
+  narrower approximation in `WP_HTTP_BLOCK_EXTERNAL` with
+  `WP_ACCESSIBLE_HOSTS`, which covers `wp_remote_*` and nothing else, so it
+  sits next to `disable_functions` rather than instead of it. Do not switch it
+  on from a guess. Log the destinations first, on `pre_http_request`, for long
+  enough to cover a full cron and billing cycle, and expect the list to hold
+  update servers, the payment gateway, transactional mail, webhooks, licence
+  checks and scheduled jobs. On a shop that list is long, but it is
+  measurable, and measuring it is the difference between containment and a
+  checkout that silently stops working.
+
+## Measures this list does not take
+
+Each of these is common advice. They are recorded here as refused on purpose,
+because the reason is not obvious and the next reader will otherwise add them.
+
+- **Denying `/wp-json/` wholesale.** It appears in most hardening guides and
+  it breaks exactly what this pipeline builds. The editor saves through
+  `/wp/v2/posts`, the media library through `/wp/v2/media`, and autosave
+  through both. Close the routes that leak by name, never the namespace.
+- **User agent blocklists against the scraper swarm.** The bots worth stopping
+  rotate agent and address per request, so there is no session to recognise
+  and nothing the ban can attach to. The list costs maintenance and buys
+  almost nothing.
+- **fail2ban, systemd FPM sandboxing and firewall egress rules.** All three
+  are sound and all three need root on a machine the client does not own.
+  Where the signal is worth having anyway, the CDN is where it is reachable: a
+  burst of 404s under `/wp-content/plugins/` is a vulnerability scan and not a
+  visitor, and rate limiting it there costs the server nothing.
+
 ## Launch checklist
 
 - [ ] Old→new URL parity measured on a sample of the old sitemap
@@ -183,6 +241,17 @@ have to learn too:
       registration and its checkout registration each answer a different
       question, and open registration with the default role is how spam
       accounts arrive
+- [ ] PHP execution denied in `wp-content/uploads` and in any cache directory,
+      and the rule verified by making the request rather than by reading it
+      back
+- [ ] `disable_functions` set, or a note naming the plugin that needs one of
+      them (a backup plugin shelling out to `mysqldump` is the usual reason)
+- [ ] `open_basedir` confirmed to hold the account, so a file written to
+      `/tmp` is not readable from the site
+- [ ] Outbound HTTP either left open deliberately or closed after a logged
+      inventory, never closed from a guess
+- [ ] 404 bursts under `/wp-content/plugins/` rate limited at the CDN, in the
+      same place as the login rule
 - [ ] SEO plugin active, sitemap responding
 - [ ] Analytics/tag manager container carried over, gated to the production host
       so staging never pollutes production data
