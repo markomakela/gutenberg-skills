@@ -52,7 +52,7 @@ function stripPhpHeader(source) {
  * Blocks the parser actually found, nested ones included.
  *
  * Matching an opening delimiter with a regex counted anything shaped like one,
- * a sample inside a code block included, and the vendor's own blockCount
+ * a delimiter the parser rejects included, and the vendor's own blockCount
  * counts only the top level while its checks recurse past it. The number next
  * to "checked:" exists to prove a run looked at something, so it has to come
  * from the same tree the checks walked.

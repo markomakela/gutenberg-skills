@@ -231,9 +231,8 @@ test("the report says when block schemas are not loaded", () => {
 });
 
 test("the block count comes from the parse tree, not from a delimiter regex", () => {
-  // Three real blocks: a Group holding two Paragraphs. The fourth delimiter is
-  // a sample inside a Code block, which a regex over the raw markup counted as
-  // a block of its own.
+  // Three real blocks: a Group holding two Paragraphs. The vendor's own count
+  // stops at the top level and would say one.
   const markup = [
     '<!-- wp:group -->',
     '<div class="wp-block-group">',
@@ -246,11 +245,13 @@ test("the block count comes from the parse tree, not from a delimiter regex", ()
   assert.equal(validateMarkup(markup, { themeJson }).blockCount, 3);
 });
 
-test("a delimiter shown as an example is not counted as a block", () => {
+test("a delimiter the parser rejects is not counted as a block", () => {
+  // No space between the block name and its attributes. A regex looking for
+  // "<!-- wp:" counts two blocks here; the parser finds one, and so does the
+  // editor, which shows the rest as classic content.
   const markup = [
-    '<!-- wp:code -->',
-    '<pre class="wp-block-code"><code>&lt;!-- wp:paragraph --&gt;</code></pre>',
-    '<!-- /wp:code -->'
+    '<!-- wp:paragraph --><p>yksi</p><!-- /wp:paragraph -->',
+    '<!-- wp:paragraph{"fontSize":"small"} --><p>kaksi</p><!-- /wp:paragraph -->'
   ].join("\n");
 
   assert.equal(validateMarkup(markup, { themeJson }).blockCount, 1);

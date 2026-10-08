@@ -66,17 +66,21 @@ so a diff that shows anything else is drift and a mu-plugin is a favourite
 place to hide it. The three production sites are still on 1.1.0 and must
 receive the updated file.
 
-- **1.1.0** The REST users routes, the author redirect block and oEmbed
-  `author_url`.
+- **1.1.0** The XML-RPC hard block and the XML-RPC filters (methods,
+  pingbacks and the hints that advertise them), the REST users routes, the
+  author redirect block and oEmbed `author_url`.
 - **1.2.0** Core's users sitemap removed, and 302 instead of 301 on the author
   redirect.
-- **1.3.0** The XML-RPC hard block, the generalised login error, application
-  passwords off and `DISALLOW_FILE_EDIT`.
-- **1.3.1** Coding style only, no behaviour change.
+- **1.3.0** The generalised login error, application passwords off and
+  `DISALLOW_FILE_EDIT`.
+- **1.3.1** Coding style for WPCS, except that its `wp_unslash()` on
+  `SCRIPT_FILENAME` stopped the XML-RPC hard block from matching on IIS.
 - **1.4.0** The login error returns core's own code and message, so a
-  brute-force counter still sees the attempt; application passwords need
-  `WEBAULA_ALLOW_APP_PASSWORDS` to stay off; the author block decides on the
-  parsed query rather than on `$_GET`; the XML-RPC block reads
+  brute-force counter still sees the attempt, and the two application
+  password error codes are generalised too; the login form shakes again on a
+  failed login; application passwords stay on only where
+  `WEBAULA_ALLOW_APP_PASSWORDS` is defined in wp-config.php; the author block
+  decides on the parsed query rather than on `$_GET`; the XML-RPC block reads
   `XMLRPC_REQUEST`.
 
 It goes in `wp-content/mu-plugins/`, where it loads with
@@ -120,7 +124,7 @@ Rolling back is deleting the file, removing the marked block, and setting
 ## The login is what is left
 
 Closing XML-RPC moves the traffic, it does not remove the attacker, and the
-login is where it goes. Five things matter there. The asset above does three.
+login is where it goes. Six things matter there. The asset above does three.
 
 **The login form still answers the question the REST endpoint no longer
 does.** WordPress says "Unknown username" for one case and "The password you
@@ -171,7 +175,7 @@ the second.
 
 ### Two-factor authentication
 
-The fourth, and deliberately not in the asset: it needs a form, a mail
+The sixth, and deliberately not in the asset: it needs a form, a mail
 template and a flow of its own, which is more than a hardening file should
 carry. One implementation worth copying lives in a WebAula theme as
 `inc/two-factor.php`. A six digit code by email after the password, required
