@@ -61,11 +61,25 @@ one batch of three live sites.
 
 `assets/webaula-endpoint-hardening.php` does all of the above and is the
 deployment source of truth: what runs on a server is this file, byte for
-byte. The current version is 1.3.0. A server still on 1.1.0 is missing the
-core users sitemap removal, the 302 on the author redirect, the generalised
-login error, and the two switches below it; a server on either 1.2.0 has one
-half of that. Diff before deploying and expect the difference, rather than
-reading it as drift. It goes in `wp-content/mu-plugins/`, where it loads with
+byte. The current version is 1.4.0, and every version's delta is listed below,
+so a diff that shows anything else is drift and a mu-plugin is a favourite
+place to hide it. The three production sites are still on 1.1.0 and must
+receive the updated file.
+
+- **1.1.0** The REST users routes, the author redirect block and oEmbed
+  `author_url`.
+- **1.2.0** Core's users sitemap removed, and 302 instead of 301 on the author
+  redirect.
+- **1.3.0** The XML-RPC hard block, the generalised login error, application
+  passwords off and `DISALLOW_FILE_EDIT`.
+- **1.3.1** Coding style only, no behaviour change.
+- **1.4.0** The login error returns core's own code and message, so a
+  brute-force counter still sees the attempt; application passwords need
+  `WEBAULA_ALLOW_APP_PASSWORDS` to stay off; the author block decides on the
+  parsed query rather than on `$_GET`; the XML-RPC block reads
+  `XMLRPC_REQUEST`.
+
+It goes in `wp-content/mu-plugins/`, where it loads with
 no activation step and cannot be switched off from wp-admin. On its own it is
 the weaker half: pair it with the deny that runs before PHP, at the top of
 `.htaccess`, inside its own markers so a plugin that rewrites the file leaves
@@ -105,25 +119,55 @@ Rolling back is deleting the file, removing the marked block, and setting
 
 ## The login is what is left
 
-Closing XML-RPC moves the traffic, it does not remove the attacker, and
-`wp-login.php` is where it goes. Four things matter there. The asset above
-does three of them.
+Closing XML-RPC moves the traffic, it does not remove the attacker, and the
+login is where it goes. Five things matter there. The asset above does three.
 
 **The login form still answers the question the REST endpoint no longer
 does.** WordPress says "Unknown username" for one case and "The password you
 entered for X is incorrect" for the other, so the enumeration you closed comes
 back through the form. Generalise it on `authenticate` rather than on
-`login_errors`: WooCommerce's My Account form never touches the login page,
-but it goes through the same authentication chain.
+`login_errors`, because wp-login.php refills the username field only for
+`incorrect_password` and the parsed chain is the same one WooCommerce's My
+Account form goes through. Return core's own `authentication_failed` and core's
+own message, not a code of your own: a security plugin counts failures by error
+code, and Wordfence's list has no fallback, so an invented code silently turns
+the lockout off.
+
+**The lost-password form answers it too, and closing the login does not touch
+it.** `retrieve_password()` returns `invalidcombo`, "There is no account with
+that username or email address", where a real account gets a 302 to
+`checkemail=confirm`; WooCommerce's own form says "Invalid username or email."
+against `reset-link-sent=true`. Login timing, registration's "already
+registered" and the default `display_name` in oEmbed answer it as well. Either
+send unknown users to the same success URL on `lostpassword_post`, or say the
+claim covers the login message only. What must not happen is a checklist item
+ticked as closed while the route next to it is open.
 
 **Application passwords bypass two-factor authentication.** They have been
 available by default since 5.6 and no second-factor prompt can interrupt them,
 because they are not a form login. Turning 2FA on while leaving them enabled
 secures the front door and leaves the side one open. Disable them unless an
-integration is using them, and check that before assuming.
+integration is using them, and check that before assuming: without Jetpack the
+WooCommerce mobile app signs in by minting one, so turning them off logs shop
+managers out of the app. `wp option get using_application_passwords` answers
+it before the deploy, and `WEBAULA_ALLOW_APP_PASSWORDS` in wp-config.php is how
+a site keeps them without editing the asset.
 
-**The file editor turns a stolen admin session into code execution** rather
-than into vandalism. `DISALLOW_FILE_EDIT` costs one line.
+**WooCommerce REST keys are the third route around a second factor.** They
+authenticate on `determine_current_user`, never through `authenticate`, and
+they survive a password change. Anyone riding a stolen admin or shop-manager
+session can mint a read/write key under Advanced, then keep reading orders and
+customers, or add a webhook, while both "two-factor" and "application passwords
+disabled" are ticked. Audit and revoke them as part of any incident, not just
+at launch.
+
+**The file editor lets a stolen admin session edit theme files in the browser.**
+`DISALLOW_FILE_EDIT` costs one line and is worth setting, but it is not the end
+of code execution: it removes `edit_files`, `edit_plugins` and `edit_themes`
+only. Uploading a plugin zip still runs code, and that needs
+`DISALLOW_FILE_MODS`, which also blocks updates from the dashboard. Decide
+which of those two the site can live with rather than assuming the first covers
+the second.
 
 ### Two-factor authentication
 
@@ -132,11 +176,18 @@ template and a flow of its own, which is more than a hardening file should
 carry. One implementation worth copying lives in a WebAula theme as
 `inc/two-factor.php`. A six digit code by email after the password, required
 only of accounts holding `manage_options` or `manage_woocommerce` so customer
-logins are untouched, a trusted device cookie hashed against the first twelve
-characters of the password hash so that changing the password invalidates
-every remembered device, and a kill switch constant for the day mail stops
-flowing. That switch is not a weakness. It is what keeps a mail outage from
-locking everyone out of the shop.
+logins are untouched, a trusted device cookie bound to the password hash so
+that changing the password invalidates every remembered device, and a kill
+switch constant for the day mail stops flowing. That switch is not a weakness.
+It is what keeps a mail outage from locking everyone out of the shop.
+
+Two things to fix when copying it. It keys the device cookie on the first twelve
+characters of the hash, which stopped working when core moved to bcrypt:
+`wp_hash_password()` now returns `'$wp' . password_hash(...)`, so those twelve
+characters are `$wp$2y$10$` plus two characters of salt and a password change
+does not reliably revoke anything. Key on the end of the hash, as core does. And
+it lives in a theme, which means this pipeline deletes it the moment it switches
+the theme: a login control belongs in a mu-plugin or a site plugin.
 
 Three things that implementation learned the hard way, and any other one will
 have to learn too:
@@ -170,16 +221,25 @@ and a PHP file is the wrong place to hold them.
   theme. Verify the rule by making the request, not by reading it back.
   LiteSpeed does not treat `.htaccess` the way Apache does, and OpenLiteSpeed
   may ignore it entirely, so the rule that works on one host is not evidence
-  about the next one.
-- **`disable_functions` is depth, not a sandbox.** `exec`, `passthru`,
-  `shell_exec`, `system`, `proc_open` and `popen`, set through cPanel's
-  MultiPHP INI editor or a `.user.ini`, so no root is needed. The last two
-  matter most: without them a dropped file cannot spawn the process that keeps
-  it alive, which is the gap that firewalling the web server's outbound
-  traffic alone leaves open. Check the backup plugin before setting it,
-  because several shell out to `mysqldump`. While in there, confirm
-  `open_basedir` holds the account, so a file written to `/tmp` is not
-  readable from the site.
+  about the next one. On hosts that run PHP as the site's own user, which is
+  most shared hosting including cPanel, the whole account is writable and not
+  just these two trees, so the rule narrows the easiest path rather than
+  closing the class.
+- **`disable_functions` is depth, not a sandbox, and it is not ours to set.**
+  `exec`, `passthru`, `shell_exec`, `system`, `proc_open` and `popen` are what
+  turns a dropped file into a running process, which is the gap that
+  firewalling outbound traffic alone leaves open. All six matter, not just the
+  last two: `exec( 'nohup ... &' )` keeps a process alive as well as
+  `proc_open` does. But the directive is php.ini only. A `.user.ini` never
+  applies it, cPanel's MultiPHP INI editor has no effect under PHP-FPM, which
+  is cPanel's default, and under suPHP a docroot php.ini covers only scripts in
+  that directory and not `wp-content/uploads`. None of that reports an error,
+  which is how this gets ticked with nothing enforced. Ask the host to set it
+  in php.ini or the FPM pool, then verify by running a script that calls
+  `proc_open` and watching it fail. Check the backup plugin first, because
+  several shell out to `mysqldump`. `open_basedir` is a separate control and is
+  `INI_ALL`, so it can be set per site; leave `/tmp` in it unless the host has
+  moved `upload_tmp_dir`, because PHP uploads go through it.
 - **Close outbound traffic only after observing it.** This is the containment
   that actually defeats a command and control callback, and on a machine we do
   not own the proxy and firewall version of it is unavailable. WordPress has a
@@ -199,9 +259,12 @@ Each of these is common advice. They are recorded here as refused on purpose,
 because the reason is not obvious and the next reader will otherwise add them.
 
 - **Denying `/wp-json/` wholesale.** It appears in most hardening guides and
-  it breaks exactly what this pipeline builds. The editor saves through
-  `/wp/v2/posts`, the media library through `/wp/v2/media`, and autosave
-  through both. Close the routes that leak by name, never the namespace.
+  it breaks exactly what this pipeline builds. A block theme's editing surface
+  is REST: pages through `/wp/v2/pages`, templates and template parts through
+  `/wp/v2/templates` and `/wp/v2/template-parts`, global styles through
+  `/wp/v2/global-styles`, uploads through `/wp/v2/media`, and autosaves through
+  each post type's own `autosave` route, which media does not have. Close the
+  routes that leak by name, never the namespace.
 - **User agent blocklists against the scraper swarm.** The bots worth stopping
   rotate agent and address per request, so there is no session to recognise
   and nothing the ban can attach to. The list costs maintenance and buys
@@ -229,14 +292,26 @@ because the reason is not obvious and the next reader will otherwise add them.
 - [ ] `/xmlrpc.php` denied before PHP runs, in `.htaccess` or the WAF
       (`xmlrpc_enabled` leaves `pingback.ping`, and a mu-plugin has booted
       WordPress before it can refuse)
-- [ ] Login errors generalised on `authenticate`, so the form does not answer
-      what the REST endpoint no longer does
-- [ ] Application passwords disabled, or a note saying which integration needs
-      them
-- [ ] `DISALLOW_FILE_EDIT` set
-- [ ] Two-factor on every account that can manage the site or the shop
-- [ ] Rate limit or geo rule on `wp-login.php` at the CDN, where the traffic
-      moves once XML-RPC closes
+- [ ] Login errors generalised on `authenticate`, returning core's own
+      `authentication_failed` so a security plugin still counts the failure
+- [ ] Lost password decided: either unknown accounts sent to the same success
+      URL, or the claim narrowed, because `retrieve_password()` and Woo's own
+      form both still name a missing account
+- [ ] Application passwords disabled, or `WEBAULA_ALLOW_APP_PASSWORDS` set with
+      a note saying which integration needs them (`wp option get
+      using_application_passwords` answers it, and the WooCommerce app is the
+      one that breaks)
+- [ ] `DISALLOW_FILE_EDIT` set, and a decision recorded on
+      `DISALLOW_FILE_MODS`, which is what actually stops a plugin upload
+- [ ] WooCommerce REST keys and webhooks listed, and anything unexplained
+      revoked: they authenticate on `determine_current_user` and go around both
+      the second factor and the application password switch
+- [ ] Two-factor on every account that can manage the site or the shop, and the
+      implementation outside the theme so switching the theme cannot remove it
+- [ ] Rate limit at the CDN on login POSTs, not only on the `wp-login.php` path:
+      Woo's handler runs on `wp_loaded` for every request, so `login`,
+      `username`, `password` and `woocommerce-login-nonce` posted to any URL is
+      a login attempt that never touches the login page
 - [ ] Registration settings deliberate: `users_can_register`, Woo's My Account
       registration and its checkout registration each answer a different
       question, and open registration with the default role is how spam
@@ -244,10 +319,12 @@ because the reason is not obvious and the next reader will otherwise add them.
 - [ ] PHP execution denied in `wp-content/uploads` and in any cache directory,
       and the rule verified by making the request rather than by reading it
       back
-- [ ] `disable_functions` set, or a note naming the plugin that needs one of
-      them (a backup plugin shelling out to `mysqldump` is the usual reason)
-- [ ] `open_basedir` confirmed to hold the account, so a file written to
-      `/tmp` is not readable from the site
+- [ ] `disable_functions` requested from the host in php.ini or the FPM pool,
+      then verified by a script that calls `proc_open` and fails (a `.user.ini`
+      cannot set it, and nothing reports that it did not), or a note naming the
+      plugin that needs one of them
+- [ ] `open_basedir` confirmed to hold the account, with `/tmp` still in it
+      unless the host has moved `upload_tmp_dir`
 - [ ] Outbound HTTP either left open deliberately or closed after a logged
       inventory, never closed from a guess
 - [ ] 404 bursts under `/wp-content/plugins/` rate limited at the CDN, in the
