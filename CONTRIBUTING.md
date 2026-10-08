@@ -34,12 +34,11 @@ are held to the WordPress Coding Standards. `phpcs.xml.dist` carries the
 configuration, including what is excluded and why.
 
 CI installs the standard outside the repo so that npm stays the only
-dependency manager to set up. Locally, once:
+dependency manager to set up. One script does it, and CI calls the same one, so
+these instructions cannot drift from what CI actually runs. Locally, once:
 
 ```sh
-mkdir -p /tmp/phpcs
-composer -d /tmp/phpcs config allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
-composer -d /tmp/phpcs require squizlabs/php_codesniffer:^3.9 wp-coding-standards/wpcs:^3.1
+./tools/install-phpcs.sh /tmp/phpcs
 ```
 
 Then from the repo root:

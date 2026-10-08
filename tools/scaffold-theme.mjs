@@ -353,7 +353,9 @@ function patternsReadme(meta) {
   return `# Patterns
 
 WordPress discovers every \`.php\` file in this directory automatically. A
-pattern file needs this header and nothing else:
+pattern file needs this header and nothing else. The blank line between the
+doc comment and the closing tag is not decoration: WPCS fails the file without
+it.
 
 \`\`\`php
 <?php
@@ -364,6 +366,7 @@ pattern file needs this header and nothing else:
  *
  * @package ${meta.textDomain}
  */
+
 ?>
 <!-- wp:cover ... -->
 \`\`\`
