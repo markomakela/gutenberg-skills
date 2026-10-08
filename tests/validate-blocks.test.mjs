@@ -229,3 +229,42 @@ test("the report says when block schemas are not loaded", () => {
   const machine = runCli(["--theme", themeDir, "--json"], env);
   assert.equal(JSON.parse(machine.stdout).hasSchemas, false);
 });
+
+test("the block count comes from the parse tree, not from a delimiter regex", () => {
+  // Three real blocks: a Group holding two Paragraphs. The fourth delimiter is
+  // a sample inside a Code block, which a regex over the raw markup counted as
+  // a block of its own.
+  const markup = [
+    '<!-- wp:group -->',
+    '<div class="wp-block-group">',
+    '<!-- wp:paragraph --><p>yksi</p><!-- /wp:paragraph -->',
+    '<!-- wp:paragraph --><p>kaksi</p><!-- /wp:paragraph -->',
+    '</div>',
+    '<!-- /wp:group -->'
+  ].join("\n");
+
+  assert.equal(validateMarkup(markup, { themeJson }).blockCount, 3);
+});
+
+test("a delimiter shown as an example is not counted as a block", () => {
+  const markup = [
+    '<!-- wp:code -->',
+    '<pre class="wp-block-code"><code>&lt;!-- wp:paragraph --&gt;</code></pre>',
+    '<!-- /wp:code -->'
+  ].join("\n");
+
+  assert.equal(validateMarkup(markup, { themeJson }).blockCount, 1);
+});
+
+test("the checked line reports the files and the blocks behind it", () => {
+  const result = runCli(["--theme", themeDir]);
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+
+  const line = result.stdout.split("\n").find((l) => l.startsWith("checked:"));
+  assert.ok(line, "no checked: line in the output");
+
+  const [, files, blocks] = line.match(/checked: (\d+) files, (\d+) blocks/) ?? [];
+  assert.equal(Number(files), validateTheme(themeDir).fileCount);
+  assert.equal(Number(blocks), validateTheme(themeDir).blockCount);
+  assert.ok(Number(blocks) > Number(files), "a theme has more blocks than files");
+});
